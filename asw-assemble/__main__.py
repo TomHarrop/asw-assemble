@@ -81,6 +81,10 @@ def main():
                                and x.is_file()])
 
     fastq_files = list(tompytools.flatten_list(fastq_file_list))
+
+    # extract only ASW gDNA fastq data, i.e.
+    # 2125-01-11-1 = ASW PE
+    # 2125-01-06-1 = ASW MP
     active_fq_files = [x for x in fastq_files
                        if ('2125-01-11-1' in x
                            or '2125-01-06-1' in x)]
@@ -97,66 +101,84 @@ def main():
             job_name='merge_fq'),
         input=raw_fq_files,
         filter=ruffus.formatter(
-            r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R(?P<RN>\d)_.*.fastq.gz'
-            ),
+            r'data/NZGL02125/.*/'
+            '[^-]+-(?P<LIB>[^_]+).+_R(?P<RN>\d)_.*.fastq.gz'),
         output=[r'output/fq_merged/{LIB[0]}_R{RN[0]}_merged.fastq.gz'])
 
+    # make pairs and send to cutadapt
+    pe_trimmed = main_pipeline.collate(
+        name='pe_trimmed',
+        task_func=test_job_function,
+        input=merged_fq_files,
+        filter=ruffus.regex(
+            r'output/fq_merged/2125-01-11-1_R(\d)_merged.fastq.gz'),
+        output=['output/cutadapt/pe/2125-01-11-1_R1_trimmed.fastq.gz',
+                'output/cutadapt/pe/2125-01-11-1_R2_trimmed.fastq.gz'])
 
-    # extract only ASW gDNA fastq data, i.e.
-    # 2125-01-11-1 = ASW PE
-    # 2125-01-06-1 = ASW MP
-    asw_pe_fastq_files = [x for x in fastq_files
-                          if '2125-01-11-1' in x]
-    asw_mp_fastq_files = [x for x in fastq_files
-                          if '2125-01-06-1' in x]
-
-    # make pairs
-    asw_pe_fastq_pairs = {x: x.replace('_R1_', '_R2_')
-                          for x in asw_pe_fastq_files
-                          if '_R1_' in os.path.split(x)[1]}
-    asw_mp_fastq_pairs = {x: x.replace('_R1_', '_R2_')
-                          for x in asw_mp_fastq_files
-                          if '_R1_' in os.path.split(x)[1]}
+    mp_trimmed = main_pipeline.collate(
+        name='mp_trimmed',
+        task_func=test_job_function,
+        input=merged_fq_files,
+        filter=ruffus.regex(
+            r'output/fq_merged/2125-01-11-1_R(\d)_merged.fastq.gz'),
+        output=['output/cutadapt/mp/2125-01-11-1_R1_trimmed.fastq.gz',
+                'output/cutadapt/mp/2125-01-11-1_R2_trimmed.fastq.gz'])
 
     # sanity check pairs
-    #pair_sanity_check(asw_pe_fastq_pairs)
-    #pair_sanity_check(asw_mp_fastq_pairs)
+    
 
-    # load the files into ruffus
-    asw_pe_pairs = main_pipeline.originate(
-        name='asw_pe_fastq',
-        task_func=pair_sanity_check,
-        output=create_list_of_pairs(asw_pe_fastq_pairs))
+    # asw_pe_fastq_files = [x for x in fastq_files
+    #                       if '2125-01-11-1' in x]
+    # asw_mp_fastq_files = [x for x in fastq_files
+    #                       if '2125-01-06-1' in x]
 
-    asw_mp_pairs = main_pipeline.originate(
-        name='asw_mp_fastq',
-        task_func=pair_sanity_check,
-        output=create_list_of_pairs(asw_mp_fastq_pairs))
+    # # make pairs
+    # asw_pe_fastq_pairs = {x: x.replace('_R1_', '_R2_')
+    #                       for x in asw_pe_fastq_files
+    #                       if '_R1_' in os.path.split(x)[1]}
+    # asw_mp_fastq_pairs = {x: x.replace('_R1_', '_R2_')
+    #                       for x in asw_mp_fastq_files
+    #                       if '_R1_' in os.path.split(x)[1]}
 
-    # trim the pair end reads first
-    pe_trimmed = main_pipeline.transform(
-        name='pe_trimmed',
-        task_func=tompltools.generate_job_function(
-            job_script='src/sh/cutadapt_pe',
-            job_name='pe_trimmed'),
-        input=asw_pe_pairs,
-        filter=ruffus.formatter(
-            r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R1_.*.fastq.gz',
-            r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R2_.*.fastq.gz'),
-        output=[r'output/cutadapt/pe/{LIB[0]}_R1_trimmed.fastq.gz',
-                r'output/cutadapt/pe/{LIB[0]}_R2_trimmed.fastq.gz'])
+    # # sanity check pairs
+    # #pair_sanity_check(asw_pe_fastq_pairs)
+    # #pair_sanity_check(asw_mp_fastq_pairs)
 
-    mp_trimmed = main_pipeline.transform(
-        name='mp_trimmed',
-        task_func=tompltools.generate_job_function(
-            job_script='src/sh/cutadapt_mp',
-            job_name='mp_trimmed'),
-        input=asw_mp_pairs,
-        filter=ruffus.formatter(
-            r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R1_.*.fastq.gz',
-            r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R2_.*.fastq.gz'),
-        output=[r'output/cutadapt/mp/{LIB[0]}_R1_trimmed.fastq.gz',
-                r'output/cutadapt/mp/{LIB[0]}_R2_trimmed.fastq.gz'])
+    # # load the files into ruffus
+    # asw_pe_pairs = main_pipeline.originate(
+    #     name='asw_pe_fastq',
+    #     task_func=pair_sanity_check,
+    #     output=create_list_of_pairs(asw_pe_fastq_pairs))
+
+    # asw_mp_pairs = main_pipeline.originate(
+    #     name='asw_mp_fastq',
+    #     task_func=pair_sanity_check,
+    #     output=create_list_of_pairs(asw_mp_fastq_pairs))
+
+    # # trim the pair end reads first
+    # pe_trimmed = main_pipeline.transform(
+    #     name='pe_trimmed',
+    #     task_func=tompltools.generate_job_function(
+    #         job_script='src/sh/cutadapt_pe',
+    #         job_name='pe_trimmed'),
+    #     input=asw_pe_pairs,
+    #     filter=ruffus.formatter(
+    #         r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R1_.*.fastq.gz',
+    #         r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R2_.*.fastq.gz'),
+    #     output=[r'output/cutadapt/pe/{LIB[0]}_R1_trimmed.fastq.gz',
+    #             r'output/cutadapt/pe/{LIB[0]}_R2_trimmed.fastq.gz'])
+
+    # mp_trimmed = main_pipeline.transform(
+    #     name='mp_trimmed',
+    #     task_func=tompltools.generate_job_function(
+    #         job_script='src/sh/cutadapt_mp',
+    #         job_name='mp_trimmed'),
+    #     input=asw_mp_pairs,
+    #     filter=ruffus.formatter(
+    #         r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R1_.*.fastq.gz',
+    #         r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R2_.*.fastq.gz'),
+    #     output=[r'output/cutadapt/mp/{LIB[0]}_R1_trimmed.fastq.gz',
+    #             r'output/cutadapt/mp/{LIB[0]}_R2_trimmed.fastq.gz'])
 
 #CAFG2ANXX-2125-01-11-1_S1_L001_R2_001.fastq.gz
 
