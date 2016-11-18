@@ -46,6 +46,12 @@ def main():
     # SETUP #
     #########
 
+    # test function for checking input/output passed to job_script and parsing
+    # by io_parser
+    test_job_function = tompltools.generate_job_function(
+        job_script='src/sh/io_parser',
+        job_name='test')
+
     # parse email etc. here?
     parser = ruffus.cmdline.get_argparse(
         description='ASW genome assembly pipeline.')
@@ -75,6 +81,23 @@ def main():
                                and x.is_file()])
 
     fastq_files = list(tompytools.flatten_list(fastq_file_list))
+
+    # load files into ruffus and merge libraries
+    raw_fq_files = main_pipeline.originate(
+        name='raw_fq_files',
+        task_func=os.path.isfile,
+        output=fastq_files)
+    merged_fq_files = main_pipeline.collate(
+        name='merged_fq_files',
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/merge_fq',
+            job_name='merge_fq'),
+        input=raw_fq_files,
+        filter=ruffus.formatter(
+            r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R(?P<RN>\d)_.*.fastq.gz'
+            ),
+        output=[r'output/fq_merged/{LIB[0]}_R{RN[0]}_merged.fastq.gz'])
+
 
     # extract only ASW gDNA fastq data, i.e.
     # 2125-01-11-1 = ASW PE

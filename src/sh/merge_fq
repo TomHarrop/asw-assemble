@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+printf "[ %s: Merge fq files ]\n" \
+    "$(date)"
+
+# shellcheck disable=SC1091
+source "src/sh/bash_header"
+# shellcheck disable=SC1091
+source "src/sh/io_parser"
+
+# make outdir
+outdir="$(dirname "${output_fq}")"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+# build command
+cmd=( cat "${input_fq[@]}" )
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+# run command
+srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+    --output="${output_fq}" cat "${input_fq[@]}" &
+printf "[ %s: Concatenating reads ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+printf "[ %s: Done ]\n" "$(date)"
+
+exit 0
