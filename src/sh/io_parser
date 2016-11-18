@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+
+# variable printing function
+
+# dictionary of bash flags:
+# -b: input_bam
+# -c: output_bam
+# -d: output_bai
+# -e: email
+# -f: input_fa
+# --fq: input_fq
+# --ofq: output_fq
+# -g: output_fa
+# -h: output_dict
+# -i: output_fai
+# -j: input_gtf
+# -k: output_gtf
+# -l: input_bed
+# -m: output_bed
+# -p: password
+# -r: output_pdf
+# -t: input_table
+# -u: output_table
+# -v: input_vcf
+# -w: output_vcf
+# -y: other_input
+# -z: other_output
+
+# file name types
+   input_bam=()
+  output_bam=()
+  output_bai=()
+   jgi_logon=()
+    input_fa=()
+   output_fa=()
+    input_fq=()
+   output_fq=()
+ output_dict=()
+  output_fai=()
+   input_gtf=()
+  output_gtf=()
+   input_bed=()
+  output_bed=()
+jgi_password=()
+  output_pdf=()
+ input_table=()
+output_table=()
+   input_vcf=()
+  output_vcf=()
+ other_input=()
+other_output=()
+
+# parse options
+
+OPTIND=1
+while getopts ":b:c:d:e:f:g:h:i:j:k:l:m:p:r:t:u:v:w:-:" opt; do
+    case "${opt}" in
+        -)
+            case "${OPTARG}" in
+                "fq")
+                    input_fq+=( "${!OPTIND}" )
+                    printf "    input_fq: %s\n" "${!OPTIND}"
+                    OPTIND=$(( $OPTIND + 1 ))
+                    ;;
+                "ofq")
+                    output_fq+=( "${!OPTIND}" )
+                    printf "   output_fq: %s\n" "${!OPTIND}"
+                    OPTIND=$(( $OPTIND + 1 ))
+                    ;;
+                :)
+                    printf "Option -%s requires an argument.\n" "${OPTARG}" >&2
+                    exit 1
+                    ;;
+                \?)
+                    printf "Invalid option: -%s\n" "${OPTARG}" >&2
+                    exit 1
+                    ;;
+            esac
+            ;;
+        "b")
+            input_bam+=( "${OPTARG}" )
+            printf "   input_bam: %s\n" "${OPTARG}"
+            ;;
+        "c")
+            output_bam+=( "${OPTARG}" )
+            printf "  output_bam: %s\n" "${OPTARG}"
+            ;;
+        "d")
+            output_bai+=( "${OPTARG}" )
+            printf "  output_bai: %s\n" "${OPTARG}"
+            ;;
+        "e")
+            jgi_logon+=( "${OPTARG}" )
+            printf "   jgi_logon: %s\n" "${OPTARG}"
+            ;;
+        "f")
+            input_fa+=( "${OPTARG}" )
+            printf "    input_fa: %s\n" "${OPTARG}"
+            ;;
+        "g")
+            output_fa+=( "${OPTARG}" )
+            printf "   output_fa: %s\n" "${OPTARG}"
+            ;;
+        "h")
+            output_dict+=( "${OPTARG}" )
+            printf " output_dict: %s\n" "${OPTARG}"
+            ;;
+        "i")
+            output_fai+=( "${OPTARG}" )
+            printf "  output_fai: %s\n" "${OPTARG}"
+            ;;
+        "j")
+            input_gtf+=( "${OPTARG}" )
+            printf "   input_gtf: %s\n" "${OPTARG}"
+            ;;
+        "k")
+            output_gtf+=( "${OPTARG}" )
+            printf "  output_gtf: %s\n" "${OPTARG}"
+            ;;
+        "l")
+            input_bed+=( "${OPTARG}" )
+            printf "   input_bed: %s\n" "${OPTARG}"
+            ;;
+        "m")
+            output_bed+=( "${OPTARG}" )
+            printf "  output_bed: %s\n" "${OPTARG}"
+            ;;
+        "p")
+            jgi_password+=( "${OPTARG}" )
+            printf "jgi_password: %s\n" "${OPTARG}"
+            ;;
+        "r")
+            output_pdf+=( "${OPTARG}" )
+            printf "  output_pdf: %s\n" "${OPTARG}"
+            ;;
+        "t")
+            input_table+=( "${OPTARG}" )
+            printf " input_table: %s\n" "${OPTARG}"
+            ;;
+        "u")
+            output_table+=( "${OPTARG}" )
+            printf "output_table: %s\n" "${OPTARG}"
+            ;;
+        "v")
+            input_vcf+=( "${OPTARG}" )
+            printf "   input_vcf: %s\n" "${OPTARG}"
+            ;;
+        "w")
+            output_vcf+=( "${OPTARG}" )
+            printf "  output_vcf: %s\n" "${OPTARG}"
+            ;;
+        "y")
+            other_input+=( "${OPTARG}" )
+            printf " other_input: %s\n" "${OPTARG}"
+            ;;
+        "z")
+            other_output+=( "${OPTARG}" )
+            printf "other_output: %s\n" "${OPTARG}"
+            ;;
+        :)
+            printf "Option -%s requires an argument.\n" "${OPTARG}" >&2
+            exit 1
+            ;;
+        \?)
+            printf "Invalid option: -%s\n" "${OPTARG}" >&2
+            exit 1
+            ;;
+    esac
+done
+shift "$((OPTIND-1))"

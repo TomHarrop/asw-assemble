@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+printf "[ %s: Run cutadapt on mate-pair libraries ]\n" \
+    "$(date)"
+
+source "src/sh/bash_header"
+source "src/sh/io_parser"

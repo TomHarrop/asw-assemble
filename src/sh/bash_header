@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+set -e
+
+# bash traceback code from https://docwhat.org/tracebacks-in-bash/
+_showed_traceback=f
+
+_exit_trap () {
+  local _ec="$?"
+  if [[ $_ec != 0 && "${_showed_traceback}" != t ]]; then
+    traceback 1
+  fi
+}
+
+_err_trap() {
+  local _ec="$?"
+  local _cmd="${BASH_COMMAND:-unknown}"
+  traceback 1
+  _showed_traceback=t
+  printf "The command %s exited with exit code %s.\n" "${_cmd}" "${_ec}" 1>&2
+}
+
+traceback() {
+  # Hide the traceback() call.
+  local -i start=$(( ${1:-0} + 1 ))
+  local -i end=${#BASH_SOURCE[@]}
+  local -i i=0
+  local -i j=0
+
+  printf "Traceback (last called is first):\n" 1>&2
+  for ((i=start; i < end; i++)); do
+    j=$(( i - 1 ))
+    local function="${FUNCNAME[$i]}"
+    local file="${BASH_SOURCE[$i]}"
+    local line="${BASH_LINENO[$j]}"
+    printf "     %s() in %s:%s\n" "${function}" "${file}" "${line}" 1>&2
+  done
+}
+
+# traps
+trap _err_trap SIGHUP SIGINT SIGTERM
+trap _exit_trap EXIT
+trap _err_trap ERR
+
+# how many CPUs?
+if [[ "${SLURM_JOB_CPUS_PER_NODE}" ]]; then
+  max_cpus="${SLURM_JOB_CPUS_PER_NODE}"
+else
+  max_cpus=1
+fi
+ram_limit=$((max_cpus*3000000000))
+printf "[ %s: Running with %s CPU(s) ]\n" "$(date)" "${max_cpus}"
+printf "[ %s: Allocating %s GB RAM ]\n" "$(date)" $((ram_limit/1000000000))
+
+# handle waiting
+FAIL=0
+fail_wait() {
+for job in $(jobs -p); do
+  wait "${job}" || let "FAIL+=1"
+done
+if [[ ! "${FAIL}" == 0 ]]; then
+  printf "[ %s: Detected fail in background job ]\n" "$(date)"
+  exit 1
+fi
+}
+
+set -u
