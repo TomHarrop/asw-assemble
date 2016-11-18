@@ -81,12 +81,15 @@ def main():
                                and x.is_file()])
 
     fastq_files = list(tompytools.flatten_list(fastq_file_list))
+    active_fq_files = [x for x in fastq_files
+                       if ('2125-01-11-1' in x
+                           or '2125-01-06-1' in x)]
 
     # load files into ruffus and merge libraries
     raw_fq_files = main_pipeline.originate(
         name='raw_fq_files',
         task_func=os.path.isfile,
-        output=fastq_files)
+        output=active_fq_files)
     merged_fq_files = main_pipeline.collate(
         name='merged_fq_files',
         task_func=tompltools.generate_job_function(
