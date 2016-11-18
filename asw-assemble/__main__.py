@@ -108,7 +108,9 @@ def main():
     # make pairs and send to cutadapt
     pe_trimmed = main_pipeline.collate(
         name='pe_trimmed',
-        task_func=test_job_function,
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/cutadapt_pe',
+            job_name='pe_trimmed'),
         input=merged_fq_files,
         filter=ruffus.regex(
             r'output/fq_merged/2125-01-11-1_R(\d)_merged.fastq.gz'),
@@ -125,7 +127,7 @@ def main():
                 'output/cutadapt/mp/2125-01-11-1_R2_trimmed.fastq.gz'])
 
     # sanity check pairs
-    
+
 
     # asw_pe_fastq_files = [x for x in fastq_files
     #                       if '2125-01-11-1' in x]
