@@ -3,7 +3,9 @@
 printf "[ %s: Run cutadapt on paired-end libraries ]\n" \
     "$(date)"
 
+# shellcheck disable=SC1091
 source "src/sh/bash_header"
+# shellcheck disable=SC1091
 source "src/sh/io_parser"
 
 # make outdir
@@ -55,7 +57,7 @@ shopt -u extglob
 # run job
 bn=$(basename "${ofq_r1}" _R1_trimmed.fastq.gz)
 log_file="${outdir}/${bn}_cutadapt.log.txt"
-echo srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
     --job-name="${bn}" --output="${log_file}" "${cmd[@]}" &
 printf "[ %s: Waiting for cutadapt to finish ]\n" "$(date)"
 FAIL=0

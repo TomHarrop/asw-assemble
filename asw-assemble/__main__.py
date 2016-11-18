@@ -112,9 +112,7 @@ def main():
         name='pe_trimmed',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/cutadapt_pe',
-            job_name='pe_trimmed',
-            cpus_per_task=2,
-            ntasks=1),
+            job_name='pe_trimmed'),
         input=asw_pe_pairs,
         filter=ruffus.formatter(
             r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R1_.*.fastq.gz',
@@ -126,9 +124,7 @@ def main():
         name='mp_trimmed',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/cutadapt_mp',
-            job_name='mp_trimmed',
-            cpus_per_task=2,
-            ntasks=1),
+            job_name='mp_trimmed'),
         input=asw_mp_pairs,
         filter=ruffus.formatter(
             r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R1_.*.fastq.gz',
