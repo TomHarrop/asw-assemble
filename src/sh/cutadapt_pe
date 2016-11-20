@@ -17,7 +17,7 @@ fi
 # parameters
 adaptor_fwd='TruSeq_indexed_adaptor=AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC'
 adaptor_rev='RC_TruSeq_Universal_Adapter=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT'
-trim_qualities=20
+trim_qualities=30
 minimum_length=50
 
 # pair the files
@@ -64,7 +64,7 @@ FAIL=0
 fail_wait
 
 # log metadata
-metadata_file="${outdir}/${bn}_cutadapt.csv"
+metadata_file="${outdir}/${bn}.METADATA.csv"
 
 printf "[ %s: Logging metadata ]\n" "$(date)"
 printf "metadata_file: %s\n" "${metadata_file}"

@@ -3,5 +3,136 @@
 printf "[ %s: Run cutadapt on mate-pair libraries ]\n" \
     "$(date)"
 
+# shellcheck disable=SC1091
 source "src/sh/bash_header"
+# shellcheck disable=SC1091
 source "src/sh/io_parser"
+
+# make outdir
+outdir="$(dirname "${output_fq}")"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+# first round adaptors
+r1_ext='Read_1_External_Adapter=GATCGGAAGAGCACACGTCTGAACTCCAGTCAC'
+r2_ext='Read_2_External_Adapter=GATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT'
+# circularised junction adaptors
+cja='Circularized_Single_Junction_Adapter=CTGTCTCTTATACACATCT'
+ cja_rc='Circularized_Single_Junction_Adapter_Reverse_Complement='
+cja_rc+='AGATGTGTATAAGAGACAG'
+# parameters
+trim_qualities=30
+minimum_length=50
+
+# pair the files
+for fq_file in "${input_fq[@]}"; do
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "_R1_" <<< "${bn}"; then
+        fq_r1="${fq_file}"
+    elif grep -q "_R2_" <<< "${bn}"; then
+        fq_r2="${fq_file}"
+    fi
+done
+
+printf "       fq_r1: %s\n       fq_r2: %s\n" "${fq_r1}" "${fq_r2}"
+
+for fq_file in "${output_fq[@]}"; do
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "_R1_" <<< "${bn}"; then
+        ofq_r1="${fq_file}"
+    elif grep -q "_R2_" <<< "${bn}"; then
+        ofq_r2="${fq_file}"
+    fi
+done
+
+printf "      ofq_r1: %s\n      ofq_r2: %s\n" "${ofq_r1}" "${ofq_r2}"
+
+# first round output
+round1_r1="${ofq_r1/trimmed/round1_trimmed}"
+round1_r2="${ofq_r2/trimmed/round1_trimmed}"
+
+printf "   round1_r1: %s\n   round1_r2: %s\n" "${round1_r1}" "${round1_r2}"
+
+# first round command
+printf "[ %s: First round: trimming external adaptors ]\n" "$(date)"
+
+cmd1=( cutadapt -a "${r1_ext}" -A "${r2_ext}"
+        --quality-cutoff="${trim_qualities}"
+        --minimum-length="${minimum_length}"
+        --output="${round1_r1}" --paired-output="${round1_r2}"
+        "${fq_r1}" "${fq_r2}" )
+
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd1[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+# run round 1
+bn=$(basename "${ofq_r1}" _R1_trimmed.fastq.gz)
+log_file="${outdir}/${bn}_round1_cutadapt.log.txt"
+srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+    --job-name="${bn}" --output="${log_file}" "${cmd1[@]}" &
+printf "[ %s: Waiting for cutadapt to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+# second round output
+ofq_tooshort_r1="${ofq_r1/trimmed/round2_tooshort}"
+ofq_tooshort_r2="${ofq_r2/trimmed/round2_tooshort}"
+ofq_untrimmed_r1="${ofq_r1/trimmed/round2_untrimmed}"
+ofq_untrimmed_r2="${ofq_r2/trimmed/round2_untrimmed}"
+
+printf "ofq_tooshort_r1: %s\nofq_tooshort_r2: %s\n" \
+    "${ofq_tooshort_r1}" "${ofq_tooshort_r2}"
+printf "ofq_untrimmed_r1: %s\nofq_untrimmed_r2: %s\n" \
+    "${ofq_untrimmed_r1}" "${ofq_untrimmed_r2}"
+
+# second round command
+printf "[ %s: Second round: trimming junction adaptors ]\n" "$(date)"
+
+cmd2=( cutadapt -a "${cja}" -a "${cja_rc}"
+        -A "${cja}" -A "${cja_rc}"
+        --quality-cutoff="${trim_qualities}"
+        --minimum-length="${minimum_length}"
+        --pair-filter="any"
+        --output="${ofq_r1}" --paired-output="${ofq_r2}"
+        --untrimmed-output="${ofq_untrimmed_r1}"
+        --untrimmed-paired-output="${ofq_untrimmed_r2}"
+        --too-short-output="${ofq_tooshort_r1}"
+        --too-short-paired-output="${ofq_tooshort_r2}"
+        "${round1_r1}" "${round1_r2}" )
+
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd2[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+# run round 2
+log_file="${outdir}/${bn}_round2_cutadapt.log.txt"
+srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+    --job-name="${bn}" --output="${log_file}" "${cmd2[@]}" &
+printf "[ %s: Waiting for cutadapt to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+
+# log metadata
+metadata_file="${outdir}/${bn}.METADATA.csv"
+
+printf "[ %s: Logging metadata ]\n" "$(date)"
+printf "metadata_file: %s\n" "${metadata_file}"
+cat <<- _EOF_ > "${metadata_file}"
+    Script,${0}
+    branch,$(git rev-parse --abbrev-ref HEAD)
+    hash,$(git rev-parse HEAD)
+    date,$(date +%F)
+    cutadapt version,$(cutadapt --version)
+    output,${outdir}
+_EOF_
+
+printf "[ %s: Done ]\n" "$(date)"
+
+exit 0

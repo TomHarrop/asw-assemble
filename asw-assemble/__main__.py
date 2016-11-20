@@ -42,12 +42,13 @@ def create_list_of_pairs(pairs_dict):
 ############
 
 def main():
+
     #########
     # SETUP #
     #########
 
     # test function for checking input/output passed to job_script and parsing
-    # by io_parser
+    # by src/sh/io_parser
     test_job_function = tompltools.generate_job_function(
         job_script='src/sh/io_parser',
         job_name='test')
@@ -89,11 +90,13 @@ def main():
                        if ('2125-01-11-1' in x
                            or '2125-01-06-1' in x)]
 
-    # load files into ruffus and merge libraries
+    # load files into ruffus 
     raw_fq_files = main_pipeline.originate(
         name='raw_fq_files',
         task_func=os.path.isfile,
         output=active_fq_files)
+
+    # merge libraries
     merged_fq_files = main_pipeline.collate(
         name='merged_fq_files',
         task_func=tompltools.generate_job_function(
@@ -119,70 +122,14 @@ def main():
 
     mp_trimmed = main_pipeline.collate(
         name='mp_trimmed',
-        task_func=test_job_function,
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/cutadapt_mp',
+            job_name='mp_trimmed'),
         input=merged_fq_files,
         filter=ruffus.regex(
-            r'output/fq_merged/2125-01-11-1_R(\d)_merged.fastq.gz'),
-        output=['output/cutadapt/mp/2125-01-11-1_R1_trimmed.fastq.gz',
-                'output/cutadapt/mp/2125-01-11-1_R2_trimmed.fastq.gz'])
-
-    # sanity check pairs
-
-
-    # asw_pe_fastq_files = [x for x in fastq_files
-    #                       if '2125-01-11-1' in x]
-    # asw_mp_fastq_files = [x for x in fastq_files
-    #                       if '2125-01-06-1' in x]
-
-    # # make pairs
-    # asw_pe_fastq_pairs = {x: x.replace('_R1_', '_R2_')
-    #                       for x in asw_pe_fastq_files
-    #                       if '_R1_' in os.path.split(x)[1]}
-    # asw_mp_fastq_pairs = {x: x.replace('_R1_', '_R2_')
-    #                       for x in asw_mp_fastq_files
-    #                       if '_R1_' in os.path.split(x)[1]}
-
-    # # sanity check pairs
-    # #pair_sanity_check(asw_pe_fastq_pairs)
-    # #pair_sanity_check(asw_mp_fastq_pairs)
-
-    # # load the files into ruffus
-    # asw_pe_pairs = main_pipeline.originate(
-    #     name='asw_pe_fastq',
-    #     task_func=pair_sanity_check,
-    #     output=create_list_of_pairs(asw_pe_fastq_pairs))
-
-    # asw_mp_pairs = main_pipeline.originate(
-    #     name='asw_mp_fastq',
-    #     task_func=pair_sanity_check,
-    #     output=create_list_of_pairs(asw_mp_fastq_pairs))
-
-    # # trim the pair end reads first
-    # pe_trimmed = main_pipeline.transform(
-    #     name='pe_trimmed',
-    #     task_func=tompltools.generate_job_function(
-    #         job_script='src/sh/cutadapt_pe',
-    #         job_name='pe_trimmed'),
-    #     input=asw_pe_pairs,
-    #     filter=ruffus.formatter(
-    #         r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R1_.*.fastq.gz',
-    #         r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R2_.*.fastq.gz'),
-    #     output=[r'output/cutadapt/pe/{LIB[0]}_R1_trimmed.fastq.gz',
-    #             r'output/cutadapt/pe/{LIB[0]}_R2_trimmed.fastq.gz'])
-
-    # mp_trimmed = main_pipeline.transform(
-    #     name='mp_trimmed',
-    #     task_func=tompltools.generate_job_function(
-    #         job_script='src/sh/cutadapt_mp',
-    #         job_name='mp_trimmed'),
-    #     input=asw_mp_pairs,
-    #     filter=ruffus.formatter(
-    #         r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R1_.*.fastq.gz',
-    #         r'data/NZGL02125/.*/[^-]+-(?P<LIB>[^_]+).+_R2_.*.fastq.gz'),
-    #     output=[r'output/cutadapt/mp/{LIB[0]}_R1_trimmed.fastq.gz',
-    #             r'output/cutadapt/mp/{LIB[0]}_R2_trimmed.fastq.gz'])
-
-#CAFG2ANXX-2125-01-11-1_S1_L001_R2_001.fastq.gz
+            r'output/fq_merged/2125-01-06-1_R(\d)_merged.fastq.gz'),
+        output=['output/cutadapt/mp/2125-01-06-1_R1_trimmed.fastq.gz',
+                'output/cutadapt/mp/2125-01-06-1_R2_trimmed.fastq.gz'])
 
     ###################
     # RUFFUS COMMANDS #
