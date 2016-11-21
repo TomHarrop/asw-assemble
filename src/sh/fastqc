@@ -31,7 +31,7 @@ shopt -u extglob
 
 # run fastqc
 srun --ntasks="${max_cpus}" --cpus-per-task=1 --exclusive \
-    --job-name="${bn}" --output="${log_file}" "${cmd1[@]}" &
+    --job-name="${bn}" --output="${log_file}" "${cmd[@]}" &
 
 printf "[ %s: Waiting for fastqc to finish ]\n" "$(date)"
 FAIL=0
