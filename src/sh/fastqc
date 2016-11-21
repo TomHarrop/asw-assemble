@@ -21,7 +21,7 @@ if [[ ! -d "${outdir}" ]]; then
 fi
 
 # build command (fastqc doesn't care about R1 and R2)
-cmd=( fastqc -o "${outdir}" -t "${max_cpus}" "${input_fq}" )
+cmd=( fastqc -o "${outdir}" -t "${max_cpus}" "${input_fq[@]}" )
 
 shopt -s extglob
 printf "Final command line: "
