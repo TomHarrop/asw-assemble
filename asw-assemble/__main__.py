@@ -131,6 +131,22 @@ def main():
         output=['output/cutadapt/mp/2125-01-06-1_R1_trimmed.fastq.gz',
                 'output/cutadapt/mp/2125-01-06-1_R2_trimmed.fastq.gz'])
 
+    # NEEDS TESTING!
+    # run fastqc on trimmed libraries
+    fastqc = main_pipeline.subdivide(
+        name='fastqc',
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/fastqc',
+            job_name='fastqc'),
+        input=ruffus.output_from([pe_trimmed, mp_trimmed]),
+        filter=ruffus.formatter(
+            r'output/cutadapt/\w{2}/'
+             '(?P<LIB>[^_]+)_R(?P<RN>\d)_trimmed.fastq.gz',
+            r'output/cutadapt/\w{2}/'
+             '(?P<LIB>[^_]+)_R(?P<RN>\d)_trimmed.fastq.gz'),
+        output=['{subpath[0][2]}/fastqc/{LIB[0]}_R{RN[0]}_trimmed_fastqc.html',
+                '{subpath[0][2]}/fastqc/{LIB[1]}_R{RN[1]}_trimmed_fastqc.html'])
+
     ###################
     # RUFFUS COMMANDS #
     ###################

@@ -53,7 +53,7 @@ other_output=()
 # parse options
 
 OPTIND=1
-while getopts ":b:c:d:e:f:g:h:i:j:k:l:m:p:r:t:u:v:w:-:" opt; do
+while getopts ":b:c:d:e:f:g:h:i:j:k:l:m:p:r:t:u:v:w:y:z:-:" opt; do
     case "${opt}" in
         -)
             case "${OPTARG}" in

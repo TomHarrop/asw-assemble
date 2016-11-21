@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+printf "[ %s: Run fastqc on trimmed libraries ]\n" \
+    "$(date)"
+
+# shellcheck disable=SC1091
+source "src/sh/bash_header"
+# shellcheck disable=SC1091
+source "src/sh/io_parser"
+
+# make outdir
+outdir="$(dirname "${other_output}")"
+for oo in "${other_output[@]}"; do
+    if grep -q "_R1_" <<< "$(basename "${oo}")"; then 
+        bn="$(basename "${oo}" _R1_trimmed_fastqc.html)"
+    fi
+done
+log_file="${outdir}/fastqc.${bn}.log.txt"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+# build command (fastqc doesn't care about R1 and R2)
+cmd=( fastqc -o "${outdir}" -t "${max_cpus}" "${input_fq}" )
+
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+# run fastqc
+srun --ntasks="${max_cpus}" --cpus-per-task=1 --exclusive \
+    --job-name="${bn}" --output="${log_file}" "${cmd1[@]}" &
+
+printf "[ %s: Waiting for fastqc to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+# log metadata
+metadata_file="${outdir}/${bn}.METADATA.csv"
+
+printf "[ %s: Logging metadata ]\n" "$(date)"
+printf "metadata_file: %s\n" "${metadata_file}"
+cat <<- _EOF_ > "${metadata_file}"
+    Script,${0}
+    branch,$(git rev-parse --abbrev-ref HEAD)
+    hash,$(git rev-parse HEAD)
+    date,$(date +%F)
+    cutadapt version,$(fastqc --version)
+    output,${outdir}
+_EOF_
+
+printf "[ %s: Done ]\n" "$(date)"
+
+exit 0
