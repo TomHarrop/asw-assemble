@@ -137,7 +137,9 @@ def main():
         name='fastqc',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/fastqc',
-            job_name='fastqc'),
+            job_name='fastqc',
+            ntasks=2,
+            cpus_per_task=1),
         input=ruffus.output_from([pe_trimmed, mp_trimmed]),
         filter=ruffus.formatter(
             r'output/cutadapt/\w{2}/'
