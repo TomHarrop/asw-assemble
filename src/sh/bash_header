@@ -52,7 +52,7 @@ fi
 # how much RAM?
 if [[ "${SLURM_MEM_PER_CPU}" ]]; then
   mem_per_cpu="${SLURM_MEM_PER_CPU}"
-  ram_limit=$(max_cpus*mem_per_cpu*1000000)
+  ram_limit=$((max_cpus*mem_per_cpu*1000000))
 else
   ram_limit=4000000000
 fi
