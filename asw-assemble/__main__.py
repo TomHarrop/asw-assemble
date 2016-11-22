@@ -16,27 +16,6 @@ import ruffus
 import os
 
 
-#############
-# Functions #
-#############
-
-# sanity check list of pairs
-def pair_sanity_check(pairs_list):
-    tompytools.generate_message('Sanity checking pair:')
-    print("R1 file:\t%s\nR2 file:\t%s\n\n" % (pairs_list[0], pairs_list[1]))
-    if not os.path.isfile(pairs_list[0]):
-        raise FileNotFoundError('R1 file\n\t' + pairs_list[0] +
-                                '\nnot found')
-    if not os.path.isfile(pairs_list[1]):
-        raise FileNotFoundError('R2 file\n\t' + pairs_list[1] +
-                                '\nnot found')
-
-
-# create pairs from sanity-checked dictionary
-def create_list_of_pairs(pairs_dict):
-    return(list([x, pairs_dict[x]] for x in pairs_dict))
-
-
 ############
 # Pipeline #
 ############
@@ -166,6 +145,22 @@ def main():
                 '{LIB[0]}_R{RN[0]}_decon.fastq.gz',
                 'output/bbduk/{LT[1]}/'
                 '{LIB[1]}_R{RN[1]}_decon.fastq.gz'])
+
+    # run velveth to prepare samples for velvetg
+    velveth = main_pipeline.merge(
+        name='velveth',
+        task_func=test_job_function,
+        input=decon,
+        output='output/velvet/Sequences')
+
+    # run velvetg
+    velvetg = main_pipeline.transform(
+        name='velvetg',
+        task_func=test_job_function,
+        input=velveth,
+        filter=ruffus.suffix('Sequences'),
+        output='contigs.fa')
+
 
     ###################
     # RUFFUS COMMANDS #

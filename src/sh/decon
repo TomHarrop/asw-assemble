@@ -38,19 +38,20 @@ done
 printf "      ofq_r1: %s\n      ofq_r2: %s\n" "${ofq_r1}" "${ofq_r2}"
 
 # parameters
-bn="$(basename "${ofq_r1}" _decon.fastq.gz)"
- fref="bin/bbmap/resources/phix174_ill.ref.fa.gz,"
-fref+="bin/bbmap/resources/sequencing_artifacts.fa.gz"
+bn="$(basename "${ofq_r1}" _R1_decon.fastq.gz)"
+ ref="bin/bbmap/resources/phix174_ill.ref.fa.gz,"
+ref+="bin/bbmap/resources/sequencing_artifacts.fa.gz"
 stats="${outdir}/${bn}_stats.txt"
 java_ram=$((ram_limit/1000000000))"g"
 
 printf "       stats: %s\n" "${stats}"
-printf "        fref: %s\n" "${fref}"
+printf "         ref: %s\n" "${ref}"
 
 # build command
 
 cmd=( bin/bbmap/bbduk.sh ziplevel=9 threads="${max_cpus}" "-Xmx${java_ram}"
-      in="${fq_r1}" in2="${fq_r2}" fref="${fref}" stats="${stats}" )
+      in="${fq_r1}" in2="${fq_r2}" ref="${ref}" stats="${stats}"
+      out="${ofq_r1}" out2="${ofq_r2}" )
 
 shopt -s extglob
 printf "Final command line: "
@@ -62,7 +63,7 @@ shopt -u extglob
 log_file="${outdir}/${bn}_bbmap.log.txt"
 srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
     --job-name="${bn}" --output="${log_file}" "${cmd[@]}" &
-printf "[ %s: Waiting for cutadapt to finish ]\n" "$(date)"
+printf "[ %s: Waiting for bbduk to finish ]\n" "$(date)"
 FAIL=0
 fail_wait
 
