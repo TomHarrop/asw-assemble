@@ -42,13 +42,14 @@ bn="$(basename "${ofq_r1}" _decon.fastq.gz)"
  fref="bin/bbmap/resources/phix174_ill.ref.fa.gz,"
 fref+="bin/bbmap/resources/sequencing_artifacts.fa.gz"
 stats="${outdir}/${bn}_stats.txt"
+java_ram=$((ram_limit/1000000000))"g"
 
 printf "       stats: %s\n" "${stats}"
 printf "        fref: %s\n" "${fref}"
 
 # build command
 
-cmd=( bin/bbmap/bbduk.sh ziplevel=9 threads="${max_cpus}" -Xmx="${ram_limit}"
+cmd=( bin/bbmap/bbduk.sh ziplevel=9 threads="${max_cpus}" -Xmx="${java_ram}"
       in="${fq_r1}" in2="${fq_r2}" fref="${fref}" stats="${stats}" )
 
 shopt -s extglob
