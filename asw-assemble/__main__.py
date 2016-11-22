@@ -131,15 +131,14 @@ def main():
         output=['output/cutadapt/mp/2125-01-06-1_R1_trimmed.fastq.gz',
                 'output/cutadapt/mp/2125-01-06-1_R2_trimmed.fastq.gz'])
 
-    # NEEDS TESTING!
     # run fastqc on trimmed libraries
     fastqc = main_pipeline.subdivide(
         name='fastqc',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/fastqc',
             job_name='fastqc',
-            ntasks=2,
-            cpus_per_task=1),
+            ntasks=1,
+            cpus_per_task=2),
         input=ruffus.output_from([pe_trimmed, mp_trimmed]),
         filter=ruffus.formatter(
             r'output/cutadapt/\w{2}/'
@@ -148,6 +147,25 @@ def main():
              '(?P<LIB>[^_]+)_R(?P<RN>\d)_trimmed.fastq.gz'),
         output=['{subpath[0][2]}/fastqc/{LIB[0]}_R{RN[0]}_trimmed_fastqc.html',
                 '{subpath[0][2]}/fastqc/{LIB[1]}_R{RN[1]}_trimmed_fastqc.html'])
+
+    # decontaminate PhiX (other?) sequences
+    decon = main_pipeline.transform(
+        name='decon',
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/decon',
+            job_name='decon',
+            ntasks=1,
+            cpus_per_task=4),
+        input=[pe_trimmed, mp_trimmed],
+        filter=ruffus.formatter(
+            r'output/cutadapt/(?P<LT>\w{2})/'
+             '(?P<LIB>[^_]+)_R(?P<RN>\d)_trimmed.fastq.gz',
+            r'output/cutadapt/(?P<LT>\w{2})/'
+             '(?P<LIB>[^_]+)_R(?P<RN>\d)_trimmed.fastq.gz'),
+        output=['output/bbduk/{LT[0]}/'
+                '{LIB[0]}_R{RN[0]}_decon.fastq.gz',
+                'output/bbduk/{LT[1]}/'
+                '{LIB[1]}_R{RN[1]}_decon.fastq.gz'])
 
     ###################
     # RUFFUS COMMANDS #

@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+
+printf "[ %s: Remove PhiX reads from libraries ]\n" \
+    "$(date)"
+
+# shellcheck disable=SC1091
+source "src/sh/bash_header"
+# shellcheck disable=SC1091
+source "src/sh/io_parser"
+
+# make outdir
+outdir="$(dirname "${output_fq}")"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+# pair the files
+for fq_file in "${input_fq[@]}"; do
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "_R1_" <<< "${bn}"; then
+        fq_r1="${fq_file}"
+    elif grep -q "_R2_" <<< "${bn}"; then
+        fq_r2="${fq_file}"
+    fi
+done
+
+printf "       fq_r1: %s\n       fq_r2: %s\n" "${fq_r1}" "${fq_r2}"
+
+for fq_file in "${output_fq[@]}"; do
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "_R1_" <<< "${bn}"; then
+        ofq_r1="${fq_file}"
+    elif grep -q "_R2_" <<< "${bn}"; then
+        ofq_r2="${fq_file}"
+    fi
+done
+
+printf "      ofq_r1: %s\n      ofq_r2: %s\n" "${ofq_r1}" "${ofq_r2}"
+
+# parameters
+bn="$(basename "${ofq_r1}" _decon.fastq.gz)"
+ fref="bin/bbmap/resources/phix174_ill.ref.fa.gz,"
+fref+="bin/bbmap/resources/sequencing_artifacts.fa.gz"
+stats="${outdir}/${bn}_stats.txt"
+
+printf "       stats: %s\n" "${stats}"
+printf "        fref: %s\n" "${fref}"
+
+# build command
+
+cmd=( bin/bbmap/bbduk.sh ziplevel=9 threads="${max_cpus}" -Xmx="${ram_limit}"
+      in="${fq_r1}" in2="${fq_r2}" fref="${fref}" stats="${stats}" )
+
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+# run bbmap
+log_file="${outdir}/${bn}_bbmap.log.txt"
+srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+    --job-name="${bn}" --output="${log_file}" "${cmd[@]}" &
+printf "[ %s: Waiting for cutadapt to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+# log metadata
+metadata_file="${outdir}/${bn}.METADATA.csv"
+
+printf "[ %s: Logging metadata ]\n" "$(date)"
+printf "metadata_file: %s\n" "${metadata_file}"
+cat <<- _EOF_ > "${metadata_file}"
+    Script,${0}
+    branch,$(git rev-parse --abbrev-ref HEAD)
+    hash,$(git rev-parse HEAD)
+    date,$(date +%F)
+    bbduk version,$(bin/bbmap/bbduk.sh --version 2>&1 | sed '2q;d')
+    output,${outdir}
+_EOF_
+
+printf "[ %s: Done ]\n" "$(date)"
+
+exit 0
