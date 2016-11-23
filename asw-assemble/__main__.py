@@ -155,7 +155,7 @@ def main():
         task_func=tompltools.generate_job_function(
             job_script='src/sh/velvet_opt',
             job_name='velvet_opt',
-            cpus_per_task=6),
+            cpus_per_task=1),
         input=decon,
         output='output/velvet_opt/velvet_opt_logfile.txt')
 

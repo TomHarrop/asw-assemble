@@ -54,7 +54,8 @@ prefix="${tmp_outdir}/$(basename "${other_output}" _logfile.txt)"
 # build command
 cmd=( velvetoptimiser --hashs="${minkmerlength}" --hashe="${maxkmerlength}"
       --velvethfiles="${velvethfiles}" --velvetgoptions="${velvetgoptions}"
-      --threads="${max_cpus}" --prefix="${prefix}" --dir_final="${dir_final}" )
+      --threads="${max_cpus}" --prefix="${prefix}" --dir_final="${dir_final}" 
+      --genomesize=800 --verbose )
 
 shopt -s extglob
 printf "Final command line: "
@@ -66,7 +67,7 @@ shopt -u extglob
 log_file="${outdir}/velvetoptimiser.log.txt"
 srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
     --job-name="${bn}" --output="${log_file}" "${cmd[@]}" &
-printf "[ %s: Waiting for cutadapt to finish ]\n" "$(date)"
+printf "[ %s: Waiting for velvetoptimiser to finish ]\n" "$(date)"
 FAIL=0
 fail_wait
 
