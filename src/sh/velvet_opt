@@ -44,15 +44,14 @@ minkmerlength="11"
  velvethfiles="-shortPaired -fastq -separate ${pe_r1} ${pe_r2} "
 velvethfiles+="-shortPaired2 -fastq -separate ${mp_r1} ${mp_r2}"
 velvetgoptions="-ins_length 476 -ins_length2 7000"
-genomesize=800
-prefix="$(basename "${other_output}" _logfile.txt)"
-dir_final="$(dirname "${other_output}")"
+#genomesize=800
+dir_final="${outdir}/vo"
+prefix="${outdir}/$(basename "${other_output}" _logfile.txt)"
 
 # build command
 cmd=( velvetoptimiser --hashs="${minkmerlength}" --hashe="${maxkmerlength}"
-      --velvethfiles="'${velvethfiles}'" --velvetgoptions="'${velvetgoptions}'"
-      --threads="${max_cpus}" --genomesize="${genomesize}" --prefix="${prefix}"
-      --dir_final="${dir_final}" )
+      --velvethfiles="${velvethfiles}" --velvetgoptions="${velvetgoptions}"
+      --threads="${max_cpus}" --prefix="${prefix}" --dir_final="${dir_final}" )
 
 shopt -s extglob
 printf "Final command line: "

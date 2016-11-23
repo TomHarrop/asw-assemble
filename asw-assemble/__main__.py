@@ -149,33 +149,15 @@ def main():
 
     # run velvetoptimiser for configuring velvet
     # set threads for velvet to 1 !!!
+    # bottleneck is velveth writing Sequences file to disk
     velvet_opt = main_pipeline.merge(
         name='velvet_opt',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/velvet_opt',
             job_name='velvet_opt',
-            cpus_per_task=8),
+            cpus_per_task=6),
         input=decon,
         output='output/velvet_opt/velvet_opt_logfile.txt')
-
-    # run velveth to prepare samples for velvetg
-    velveth = main_pipeline.transform(
-        name='velveth',
-        task_func=test_job_function,
-        input=[decon, velvet_opt],
-        filter=ruffus.suffix('Sequences'),
-        output='output/velvet/Sequences')
-
-    # run velvetg
-    # set mpi options for velvet with funky environment variable
-    velvetg = main_pipeline.transform(
-        name='velvetg',
-        task_func=test_job_function,
-        input=velveth,
-        filter=ruffus.suffix('Sequences'),
-        add_inputs=ruffus.add_inputs(ruffus.output_from(velvet_opt)),
-        output='contigs.fa')
-
 
     ###################
     # RUFFUS COMMANDS #
