@@ -8,6 +8,9 @@ source "src/sh/bash_header"
 # shellcheck disable=SC1091
 source "src/sh/io_parser"
 
+# make temporary outdir
+tmp_outdir="$(mktemp -d "${0}"_tmp.XXXXXXXX)"
+
 # make outdir
 outdir="$(dirname "${other_output}")"
 if [[ ! -d "${outdir}" ]]; then
@@ -46,7 +49,7 @@ velvethfiles+="-shortPaired2 -fastq -separate ${mp_r1} ${mp_r2}"
 velvetgoptions="-ins_length 476 -ins_length2 7000"
 #genomesize=800
 dir_final="${outdir}/vo"
-prefix="${outdir}/$(basename "${other_output}" _logfile.txt)"
+prefix="${tmp_outdir}/$(basename "${other_output}" _logfile.txt)"
 
 # build command
 cmd=( velvetoptimiser --hashs="${minkmerlength}" --hashe="${maxkmerlength}"
@@ -67,6 +70,9 @@ printf "[ %s: Waiting for cutadapt to finish ]\n" "$(date)"
 FAIL=0
 fail_wait
 
+# move results to outdir
+printf "[ %s: Moving results directories ]\n" "$(date)"
+mv "${tmp_outdir}/*" outdir/
 
 # log metadata
 metadata_file="${outdir}/METADATA.csv"
