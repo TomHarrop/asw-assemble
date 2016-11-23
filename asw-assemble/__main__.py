@@ -147,19 +147,33 @@ def main():
                 'output/fastqc/{LIB[1]}_R{RN[1]}_decon_fastqc.html'])
 
 
+    # run velvetoptimiser for configuring velvet
+    # set threads for velvet to 1 !!!
+    velvet_opt = main_pipeline.merge(
+        name='velvet_opt',
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/velvet_opt',
+            job_name='velvet_opt',
+            cpus_per_task=8),
+        input=decon,
+        output='output/velvet_opt/velvet_opt_logfile.txt')
+
     # run velveth to prepare samples for velvetg
-    velveth = main_pipeline.merge(
+    velveth = main_pipeline.transform(
         name='velveth',
         task_func=test_job_function,
-        input=decon,
+        input=[decon, velvet_opt],
+        filter=ruffus.suffix('Sequences'),
         output='output/velvet/Sequences')
 
     # run velvetg
+    # set mpi options for velvet with funky environment variable
     velvetg = main_pipeline.transform(
         name='velvetg',
         task_func=test_job_function,
         input=velveth,
         filter=ruffus.suffix('Sequences'),
+        add_inputs=ruffus.add_inputs(ruffus.output_from(velvet_opt)),
         output='contigs.fa')
 
 

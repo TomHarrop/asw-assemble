@@ -12,7 +12,7 @@ source "src/sh/io_parser"
 outdir="$(dirname "${other_output}")"
 for oo in "${other_output[@]}"; do
     if grep -q "_R1_" <<< "$(basename "${oo}")"; then 
-        bn="$(basename "${oo}" _R1_trimmed_fastqc.html)"
+        bn="$(basename "${oo}" _R1_decon_fastqc.html)"
     fi
 done
 log_file="${outdir}/fastqc.${bn}.log.txt"
@@ -47,7 +47,7 @@ cat <<- _EOF_ > "${metadata_file}"
     branch,$(git rev-parse --abbrev-ref HEAD)
     hash,$(git rev-parse HEAD)
     date,$(date +%F)
-    cutadapt version,$(fastqc --version)
+    fastqc version,$(fastqc --version)
     output,${outdir}
 _EOF_
 

@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+printf "[ %s: Optimise velvet parameters ]\n" \
+    "$(date)"
+
+# shellcheck disable=SC1091
+source "src/sh/bash_header"
+# shellcheck disable=SC1091
+source "src/sh/io_parser"
+
+# make outdir
+outdir="$(dirname "${other_output}")"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+# limit velvet to one thread and perform multi-tasking with velvet_opt
+export OMP_THREAD_LIMIT=1
+
+# match input files
+for fq_file in "${input_fq[@]}"; do
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "_R1_" <<< "${bn}"; then
+        if grep -q "2125-01-11-1" <<< "${bn}"; then
+            pe_r1="${fq_file}"
+        elif grep -q "2125-01-06-1" <<< "${bn}"; then
+            mp_r1="${fq_file}"
+        fi
+    elif grep -q "_R2_" <<< "${bn}"; then
+        if grep -q "2125-01-11-1" <<< "${bn}"; then
+            pe_r2="${fq_file}"
+        elif grep -q "2125-01-06-1" <<< "${bn}"; then
+            mp_r2="${fq_file}"
+        fi
+    fi
+done
+
+printf "       pe_r1: %s\n       pe_r2: %s\n" "${pe_r1}" "${pe_r2}"
+printf "       mp_r1: %s\n       mp_r2: %s\n" "${mp_r1}" "${mp_r2}"
+
+# parameters
+maxkmerlength="31"
+minkmerlength="11"
+ velvethfiles="-shortPaired -fastq -separate ${pe_r1} ${pe_r2} "
+velvethfiles+="-shortPaired2 -fastq -separate ${mp_r1} ${mp_r2}"
+velvetgoptions="-ins_length 476 -ins_length2 7000"
+genomesize=800
+prefix="$(basename "${other_output}" _logfile.txt)"
+dir_final="$(dirname "${other_output}")"
+
+# build command
+cmd=( velvetoptimiser --hashs="${minkmerlength}" --hashe="${maxkmerlength}"
+      --velvethfiles="'${velvethfiles}'" --velvetgoptions="'${velvetgoptions}'"
+      --threads="${max_cpus}" --genomesize="${genomesize}" --prefix="${prefix}"
+      --dir_final="${dir_final}" )
+
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+# run velvetoptimiser
+log_file="${outdir}/velvetoptimiser.log.txt"
+srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+    --job-name="${bn}" --output="${log_file}" "${cmd[@]}" &
+printf "[ %s: Waiting for cutadapt to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+
+# log metadata
+metadata_file="${outdir}/METADATA.csv"
+
+printf "[ %s: Logging metadata ]\n" "$(date)"
+printf "metadata_file: %s\n" "${metadata_file}"
+cat <<- _EOF_ > "${metadata_file}"
+    Script,${0}
+    branch,$(git rev-parse --abbrev-ref HEAD)
+    hash,$(git rev-parse HEAD)
+    date,$(date +%F)
+    velvetoptimiser version,$(velvetoptimiser --version 2>&1 | sed '3q;d')
+    output,${outdir}
+_EOF_
+
+printf "[ %s: Done ]\n" "$(date)"
+
+exit 0
