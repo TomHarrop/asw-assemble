@@ -9,7 +9,7 @@ source "src/sh/bash_header"
 source "src/sh/io_parser"
 
 # make temporary outdir
-tmp_outdir="$(mktemp -d "${0}"_tmp.XXXXXXXX)"
+tmp_outdir="$(mktemp --tmpdir -d "velvetoptimiser_tmp.XXXXXXXX")"
 
 # make outdir
 outdir="$(dirname "${other_output}")"
