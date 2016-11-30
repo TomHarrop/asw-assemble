@@ -66,7 +66,7 @@ shopt -u extglob
 
 # run velvetoptimiser
 log_file="${outdir}/velvetoptimiser.log.txt"
-srun --nice=1000 --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+srun --nice=900 --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
     --job-name="${bn}" --output="${log_file}" "${cmd[@]}" &
 printf "[ %s: Waiting for velvetoptimiser to finish ]\n" "$(date)"
 FAIL=0
