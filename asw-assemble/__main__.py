@@ -156,7 +156,9 @@ def main():
             job_script='src/sh/velvet_opt',
             job_name='velvet_opt',
             cpus_per_task=1,
-            extras=['--nice=1000']),
+            mem_per_cpu=7500,
+            nice=1000,
+            verbose=True),
         input=decon,
         output='output/velvet_opt/velvet_opt_logfile.txt')
 
