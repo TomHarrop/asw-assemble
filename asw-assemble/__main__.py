@@ -159,20 +159,23 @@ def main():
         output=['output/revcomp/{LIB[0]}_R{RN[0]}_rc.fastq.gz',
                 'output/revcomp/{LIB[1]}_R{RN[1]}_rc.fastq.gz'])
 
+
+
+
     # run velvetoptimiser for configuring velvet
     # set threads for velvet to 1 !!!
     # bottleneck is velveth writing Sequences file to disk
-    velvet_opt = main_pipeline.merge(
-        name='velvet_opt',
-        task_func=tompltools.generate_job_function(
-            job_script='src/sh/velvet_opt',
-            job_name='velvet_opt',
-            cpus_per_task=1,
-            mem_per_cpu=7500,
-            nice=1000,
-            verbose=True),
-        input=decon,
-        output='output/velvet_opt/velvet_opt_logfile.txt')
+    # velvet_opt = main_pipeline.merge(
+    #     name='velvet_opt',
+    #     task_func=tompltools.generate_job_function(
+    #         job_script='src/sh/velvet_opt',
+    #         job_name='velvet_opt',
+    #         cpus_per_task=1,
+    #         mem_per_cpu=7500,
+    #         nice=1000,
+    #         verbose=True),
+    #     input=decon,
+    #     output='output/velvet_opt/velvet_opt_logfile.txt')
 
     ###################
     # RUFFUS COMMANDS #
