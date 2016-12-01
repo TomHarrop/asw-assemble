@@ -23,18 +23,19 @@ for fq_file in "${input_fq[@]}"; do
     bn="$(basename "${fq_file}" _decon.fastq.gz)"
     outfile1="${outdir}/${bn}_rc.fastq"
     log_file="${outdir}/${bn}_rc.log.txt"
-    cmd1=( zcat "${fq_file}" "|" fastx_reverse_complement -o "${outfile1}"
-           "&&" gzip -9 "${outfile1}" )
+    cmd1=( zcat "${fq_file}" "|" fastx_reverse_complement -o "${outfile1}" )
+    cmd2=( gzip -9 "${outfile1}" )
     shopt -s extglob
     printf "Final command line: "
     printf "%s " "${cmd1[@]//+([[:blank:]])/ }"
-    #printf " ; "
-    #printf "%s " "${cmd2[@]//+([[:blank:]])/ }"
+    printf " ; "
+    printf "%s " "${cmd2[@]//+([[:blank:]])/ }"
     printf "\n"
     shopt -u extglob
 
     srun --ntasks=1 --cpus-per-task=1 --exclusive \
-        --job-name="${bn}" --output="${log_file}" "${cmd1[@]}" &
+        --job-name="${bn}" --output="${log_file}" \
+        bash -c "${cmd1[*]} ; ${cmd2[*]}" &
 done
 
 printf "[ %s: Waiting for fastx_reverse_complement to finish ]\n" "$(date)"
