@@ -146,6 +146,18 @@ def main():
         output=['output/fastqc/{LIB[0]}_R{RN[0]}_decon_fastqc.html',
                 'output/fastqc/{LIB[1]}_R{RN[1]}_decon_fastqc.html'])
 
+    # reverse complement mp reads
+    mp_revcomp = main_pipeline.transform(
+        name='mp_revcomp',
+        task_func=test_job_function,
+        input=decon,
+        filter=ruffus.formatter(
+            r'output/bbduk/mp/'
+             '(?P<LIB>[^_]+)_R(?P<RN>\d)_decon.fastq.gz',
+            r'output/bbduk/mp/'
+             '(?P<LIB>[^_]+)_R(?P<RN>\d)_decon.fastq.gz'),
+        output=['output/revcomp/{LIB[0]}_R{RN[0]}_rc.fastq.gz',
+                'output/revcomp/{LIB[1]}_R{RN[1]}_rc.fastq.gz'])
 
     # run velvetoptimiser for configuring velvet
     # set threads for velvet to 1 !!!

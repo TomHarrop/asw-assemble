@@ -2,7 +2,7 @@
 asw-assemble.sublime-project
 asw-assemble.sublime-workspace
 data/
-output/
+output
 ruffus/
 __pycache__
 bin/
