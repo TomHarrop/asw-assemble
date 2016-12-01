@@ -149,7 +149,11 @@ def main():
     # reverse complement mp reads
     mp_revcomp = main_pipeline.transform(
         name='mp_revcomp',
-        task_func=test_job_function,
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/mp_revcomp',
+            job_name='mp_revcomp',
+            ntasks=2,
+            cpus_per_task=1),
         input=decon,
         filter=ruffus.formatter(
             r'output/bbduk/mp/'
@@ -159,7 +163,19 @@ def main():
         output=['output/revcomp/{LIB[0]}_R{RN[0]}_rc.fastq.gz',
                 'output/revcomp/{LIB[1]}_R{RN[1]}_rc.fastq.gz'])
 
-
+    # prepare files with velveth
+    hash_files = main_pipeline.collate(
+        name='hash_files',
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/hash_files',
+            job_name='hash_files',
+            ntasks=1,
+            cpus_per_task=8),
+        input=decon,
+        add_inputs=ruffus.add_inputs(ruffus.output_from(mp_revcomp)),
+        filter=ruffus.regex(
+            r'output/bbduk/pe/2125-01-11-1_R(\d)_decon.fastq.gz'),
+        output=['output/velveth/Sequences'])
 
 
     # run velvetoptimiser for configuring velvet

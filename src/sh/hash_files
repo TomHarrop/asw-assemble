@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+
+printf "[ %s: Prepare velvetg hash files with velveth ]\n" \
+    "$(date)"
+
+# shellcheck disable=SC1091
+source "src/sh/bash_header"
+# shellcheck disable=SC1091
+source "src/sh/io_parser"
+
+# make outdir
+outdir="$(dirname "${other_output}")"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+# set number of processors
+export OMP_THREAD_LIMIT="${max_cpus}"
+
+# set velveth binary
+my_velveth="bin/velvet/velveth"
+
+# match input files
+for fq_file in "${input_fq[@]}"; do
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "_R1_" <<< "${bn}"; then
+        if grep -q "2125-01-11-1" <<< "${bn}"; then
+            pe_r1="${fq_file}"
+        elif grep -q "2125-01-06-1" <<< "${bn}"; then
+            mp_r1="${fq_file}"
+        fi
+    elif grep -q "_R2_" <<< "${bn}"; then
+        if grep -q "2125-01-11-1" <<< "${bn}"; then
+            pe_r2="${fq_file}"
+        elif grep -q "2125-01-06-1" <<< "${bn}"; then
+            mp_r2="${fq_file}"
+        fi
+    fi
+done
+
+printf "       pe_r1: %s\n       pe_r2: %s\n" "${pe_r1}" "${pe_r2}"
+printf "       mp_r1: %s\n       mp_r2: %s\n" "${mp_r1}" "${mp_r2}"
+
+# parameters
+ maxkmerlength="91"
+ minkmerlength="59"
+          step="8"
+  velvethfiles="-shortPaired -fastq -separate ${pe_r1} ${pe_r2} "
+  velvethfiles+="-shortPaired2 -fastq -separate ${mp_r1} ${mp_r2}"
+
+# build command
+cmd=( "${my_velveth}" "${outdir}" "${minkmerlength},${maxkmerlength},${step}"
+      "${velvethfiles}" -create_binary )
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+# run velveth
+log_file="${outdir}/velveth.log.txt"
+srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+    --job-name="velveth" --output="${log_file}" "${cmd[@]}" &
+printf "[ %s: Waiting for velveth to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+# log metadata
+metadata_file="${outdir}/METADATA.csv"
+
+printf "[ %s: Logging metadata ]\n" "$(date)"
+printf "metadata_file: %s\n" "${metadata_file}"
+cat <<- _EOF_ > "${metadata_file}"
+    Script,${0}
+    branch,$(git rev-parse --abbrev-ref HEAD)
+    hash,$(git rev-parse HEAD)
+    date,$(date +%F)
+    velveth version,$("${my_velveth}" 2>&1 | sed '2q;d')
+    output,${outdir}
+_EOF_
+
+printf "[ %s: Done ]\n" "$(date)"
+
+exit 0
