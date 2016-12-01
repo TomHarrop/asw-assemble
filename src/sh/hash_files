@@ -38,19 +38,19 @@ for fq_file in "${input_fq[@]}"; do
     fi
 done
 
-printf "       pe_r1: %s\n       pe_r2: %s\n" "${pe_r1}" "${pe_r2}"
-printf "       mp_r1: %s\n       mp_r2: %s\n" "${mp_r1}" "${mp_r2}"
+printf "\tpe_r1: %s\n\tpe_r2: %s\n" "${pe_r1}" "${pe_r2}"
+printf "\tmp_r1: %s\n\tmp_r2: %s\n" "${mp_r1}" "${mp_r2}"
 
 # parameters
- maxkmerlength="91"
- minkmerlength="59"
+ maxkmerlength="77"
+ minkmerlength="45"
           step="8"
-  velvethfiles="-shortPaired -fastq -separate ${pe_r1} ${pe_r2} "
-  velvethfiles+="-shortPaired2 -fastq -separate ${mp_r1} ${mp_r2}"
 
 # build command
 cmd=( "${my_velveth}" "${outdir}" "${minkmerlength},${maxkmerlength},${step}"
-      "${velvethfiles}" -create_binary )
+       -shortPaired -fastq -separate "${pe_r1}" "${pe_r2}" 
+       -shortPaired2 -fastq -separate "${mp_r1}" "${mp_r2}"
+       -create_binary )
 shopt -s extglob
 printf "Final command line: "
 printf "%s " "${cmd[@]//+([[:blank:]])/ }"
