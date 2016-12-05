@@ -25,24 +25,24 @@ for fq_file in "${input_fq[@]}"; do
 done
 for fq_file in "${output_fq[@]}"; do
     bn="$(basename "${fq_file}" .fastq.gz)"
-    if grep -q "_R1" <<< "${bn}"; then
-        if grep -q "_pe" <<< "${bn}"; then
+    if grep -q "_R1_" <<< "${bn}"; then
+        if grep -q "\.pe\." <<< "${bn}"; then
             ofq_pe_r1="${fq_file}"
-        elif grep -q "_se" <<< "${bn}"; then
+        elif grep -q "\.se\." <<< "${bn}"; then
             ofq_se_r1="${fq_file}"
-        elif grep -q "_mp" <<< "${bn}"; then
+        elif grep -q "\.mp\." <<< "${bn}"; then
             ofq_mp_r1="${fq_file}"
-        elif grep -q "_unknown" <<< "${bn}"; then
+        elif grep -q "\.unknown\." <<< "${bn}"; then
             ofq_unk_r1="${fq_file}"
         fi
-    elif grep -q "_R2" <<< "${bn}"; then
-        if grep -q "_pe" <<< "${bn}"; then
+    elif grep -q "_R2_" <<< "${bn}"; then
+        if grep -q "\.pe\." <<< "${bn}"; then
             ofq_pe_r2="${fq_file}"
-        elif grep -q "_se" <<< "${bn}"; then
+        elif grep -q "\.se\." <<< "${bn}"; then
             ofq_se_r2="${fq_file}"
-        elif grep -q "_mp" <<< "${bn}"; then
+        elif grep -q "\.mp\." <<< "${bn}"; then
             ofq_mp_r2="${fq_file}"
-        elif grep -q "_unknown" <<< "${bn}"; then
+        elif grep -q "\.unknown\." <<< "${bn}"; then
             ofq_unk_r2="${fq_file}"
         fi
     fi
