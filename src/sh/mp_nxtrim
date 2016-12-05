@@ -23,36 +23,8 @@ for fq_file in "${input_fq[@]}"; do
         fq_r2="${fq_file}"
     fi
 done
-for fq_file in "${output_fq[@]}"; do
-    bn="$(basename "${fq_file}" .fastq.gz)"
-    if grep -q "_R1_" <<< "${bn}"; then
-        if grep -q "\.pe\." <<< "${bn}"; then
-            ofq_pe_r1="${fq_file}"
-        elif grep -q "\.se\." <<< "${bn}"; then
-            ofq_se_r1="${fq_file}"
-        elif grep -q "\.mp\." <<< "${bn}"; then
-            ofq_mp_r1="${fq_file}"
-        elif grep -q "\.unknown\." <<< "${bn}"; then
-            ofq_unk_r1="${fq_file}"
-        fi
-    elif grep -q "_R2_" <<< "${bn}"; then
-        if grep -q "\.pe\." <<< "${bn}"; then
-            ofq_pe_r2="${fq_file}"
-        elif grep -q "\.se\." <<< "${bn}"; then
-            ofq_se_r2="${fq_file}"
-        elif grep -q "\.mp\." <<< "${bn}"; then
-            ofq_mp_r2="${fq_file}"
-        elif grep -q "\.unknown\." <<< "${bn}"; then
-            ofq_unk_r2="${fq_file}"
-        fi
-    fi
-done
 
 printf "\tfq_r1: %s\n\tfq_r2: %s\n" "${fq_r1}" "${fq_r2}"
-printf "\tofq_pe_r1: %s\n\tofq_pe_r2: %s\n" "${ofq_pe_r1}" "${ofq_pe_r2}"
-printf "\tofq_se_r1: %s\n\tofq_se_r2: %s\n" "${ofq_se_r1}" "${ofq_se_r2}"
-printf "\tofq_mp_r1: %s\n\tofq_mp_r2: %s\n" "${ofq_mp_r1}" "${ofq_mp_r2}"
-printf "\tofq_unk_r1: %s\n\tofq_unk_r2: %s\n" "${ofq_unk_r1}" "${ofq_unk_r2}"
 
 # build the command
 bn="$(basename "${fq_r1}" _R1_trimmed.fastq.gz)"
@@ -68,7 +40,7 @@ printf "\n"
 shopt -u extglob
 
 # run nxtrim
-srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+echo srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
     --output="${log_file}" "${cmd[@]}" &
 printf "[ %s: Waiting for NxTrim to finish ]\n" "$(date)"
 FAIL=0
