@@ -44,9 +44,10 @@ done
 printf "      ofq_r1: %s\n      ofq_r2: %s\n" "${ofq_r1}" "${ofq_r2}"
 
 # parameters
-bn="$(basename "${ofq_r1}" _R1_decon.fastq.gz)"
+  bn="$(basename "${ofq_r1//_R1/}" .fastq.gz)"
  ref="bin/bbmap/resources/phix174_ill.ref.fa.gz,"
-ref+="bin/bbmap/resources/sequencing_artifacts.fa.gz"
+ref+="bin/bbmap/resources/sequencing_artifacts.fa.gz,"
+ref+="bin/bbmap/resources/adapters_no_transposase.fa.gz"
 stats="${outdir}/${bn}_stats.txt"
 java_ram=$((ram_limit/1000000000))"g"
 
