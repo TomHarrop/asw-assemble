@@ -76,7 +76,7 @@ def main():
         output=active_fq_files)
 
     # merge libraries
-    merged_fq_files = main_pipeline.collate(
+    merged_fq_files = main_pipeline.transform(
         name='merged_fq_files',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/merge_fq',
@@ -87,111 +87,93 @@ def main():
             '[^-]+-(?P<LIB>[^_]+).+_R(?P<RN>\d)_.*.fastq.gz'),
         output=[r'output/fq_merged/{LIB[0]}_R{RN[0]}_merged.fastq.gz'])
 
-    # make pairs and send to cutadapt
-    pe_trimmed = main_pipeline.collate(
-        name='pe_trimmed',
+    # make pairs and send to cutadapt for trimming external adaptors
+    trim_cutadapt = main_pipeline.collate(
+        name='trim_cutadapt',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/cutadapt_pe',
-            job_name='pe_trimmed'),
+            job_name='cutadapt'),
         input=merged_fq_files,
-        filter=ruffus.regex(
-            r'output/fq_merged/2125-01-11-1_R(\d)_merged.fastq.gz'),
-        output=['output/cutadapt/pe/2125-01-11-1_R1_trimmed.fastq.gz',
-                'output/cutadapt/pe/2125-01-11-1_R2_trimmed.fastq.gz'])
+        filter=ruffus.formatter(
+            r'.+/(?P<LIB>[^_]+)_R(?P<RN>\d)_merged.fastq.gz'),
+        output=[['output/cutadapt/{LIB[0]}_R1_trimmed.fastq.gz',
+                'output/cutadapt/{LIB[0]}_R2_trimmed.fastq.gz']])
 
-    mp_trimmed = main_pipeline.collate(
-        name='mp_trimmed',
+    # send external adaptor-trimmed mp reads to nxtrim
+    mp_nxtrim = main_pipeline.transform(
+        name='mp_nxtrim',
         task_func=tompltools.generate_job_function(
-            job_script='src/sh/cutadapt_mp',
-            job_name='mp_trimmed'),
-        input=merged_fq_files,
+            job_script='src/sh/mp_nxtrim',
+            job_name='mp_nxtrim'),
+        input=trim_cutadapt,
         filter=ruffus.regex(
-            r'output/fq_merged/2125-01-06-1_R(\d)_merged.fastq.gz'),
-        output=['output/cutadapt/mp/2125-01-06-1_R1_trimmed.fastq.gz',
-                'output/cutadapt/mp/2125-01-06-1_R2_trimmed.fastq.gz'])
+            r'.+?/2125-01-06-1_R(?P<RN>\d)_trimmed.fastq.gz'),
+        output=[
+            r'output/nxtrim/2125-01-06-1_pe_R1.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_pe_R2.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_se_R1.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_se_R2.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_mp_R1.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_mp_R2.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_unknown_R1.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_unknown_R2.fastq.gz'])
 
     # decontaminate PhiX (other?) sequences
-    decon = main_pipeline.transform(
-        name='decon',
+    decon_mp = main_pipeline.collate(
+        name='decon_mp',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/decon',
-            job_name='decon',
-            ntasks=1,
-            cpus_per_task=4),
-        input=[pe_trimmed, mp_trimmed],
+            job_name='decon_mp'),
+        input=[
+            x for x in tompytools.flatten_list(
+                mp_nxtrim.__dict__['parsed_args']['output'])],
         filter=ruffus.formatter(
-            r'output/cutadapt/(?P<LT>\w{2})/'
-             '(?P<LIB>[^_]+)_R(?P<RN>\d)_trimmed.fastq.gz',
-            r'output/cutadapt/(?P<LT>\w{2})/'
-             '(?P<LIB>[^_]+)_R(?P<RN>\d)_trimmed.fastq.gz'),
-        output=['output/bbduk/{LT[0]}/'
-                '{LIB[0]}_R{RN[0]}_decon.fastq.gz',
-                'output/bbduk/{LT[1]}/'
-                '{LIB[1]}_R{RN[1]}_decon.fastq.gz'])
+            r'.+/2125-01-06-1_(?P<VL>[^.]+)_R(?P<RN>\d).fastq.gz'),
+        output=[
+            'output/decon/2125-01-06-1_R1_{VL[0]}.fastq.gz',
+            'output/decon/2125-01-06-1_R2_{VL[0]}.fastq.gz'])\
+        .follows(mp_nxtrim)
 
-    # run fastqc on trimmed libraries
-    fastqc = main_pipeline.subdivide(
+    decon_pe = main_pipeline.transform(
+        name='decon_pe',
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/decon',
+            job_name='decon_pe'),
+        input=trim_cutadapt,
+        filter=ruffus.regex(
+            r'.+?/2125-01-11-1_R(?P<RN>\d)_trimmed.fastq.gz'),
+        output=[
+            r'output/decon/2125-01-11-1_R1.fastq.gz',
+            r'output/decon/2125-01-11-1_R2.fastq.gz'])
+
+    decon = [decon_mp, decon_pe]
+
+    # run fastqc on decontaminated libraries
+    main_pipeline.subdivide(
         name='fastqc',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/fastqc',
             job_name='fastqc',
-            ntasks=1,
             cpus_per_task=2),
         input=decon,
         filter=ruffus.formatter(
-            r'output/bbduk/\w{2}/'
-             '(?P<LIB>[^_]+)_R(?P<RN>\d)_decon.fastq.gz',
-            r'output/bbduk/\w{2}/'
-             '(?P<LIB>[^_]+)_R(?P<RN>\d)_decon.fastq.gz'),
-        output=['output/fastqc/{LIB[0]}_R{RN[0]}_decon_fastqc.html',
-                'output/fastqc/{LIB[1]}_R{RN[1]}_decon_fastqc.html'])
-
-    # reverse complement mp reads
-    mp_revcomp = main_pipeline.transform(
-        name='mp_revcomp',
-        task_func=tompltools.generate_job_function(
-            job_script='src/sh/mp_revcomp',
-            job_name='mp_revcomp',
-            ntasks=2,
-            cpus_per_task=1),
-        input=decon,
-        filter=ruffus.formatter(
-            r'output/bbduk/mp/'
-             '(?P<LIB>[^_]+)_R(?P<RN>\d)_decon.fastq.gz',
-            r'output/bbduk/mp/'
-             '(?P<LIB>[^_]+)_R(?P<RN>\d)_decon.fastq.gz'),
-        output=['output/revcomp/{LIB[0]}_R{RN[0]}_rc.fastq.gz',
-                'output/revcomp/{LIB[1]}_R{RN[1]}_rc.fastq.gz'])
+            r'.+/(?P<LN>[^_]+)_R(?P<RN>\d)(?P<VL>_?\w*).fastq.gz'),
+        output=[
+            [r'output/fastqc/{LN[0]}_R1{VL[0]}_fastqc.html',
+             r'output/fastqc/{LN[0]}_R2{VL[0]}_fastqc.html']])
 
     # prepare files with velveth
-    hash_files = main_pipeline.collate(
+    # set threads for velvet to 1 !!!
+    hash_files = main_pipeline.merge(
         name='hash_files',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/hash_files',
             job_name='hash_files',
             ntasks=1,
-            cpus_per_task=8),
+            cpus_per_task=1,
+            mem_per_cpu=60000),
         input=decon,
-        add_inputs=ruffus.add_inputs(ruffus.output_from(mp_revcomp)),
-        filter=ruffus.regex(
-            r'output/bbduk/pe/2125-01-11-1_R(\d)_decon.fastq.gz'),
         output=['output/velveth/Sequences'])
-
-
-    # run velvetoptimiser for configuring velvet
-    # set threads for velvet to 1 !!!
-    # bottleneck is velveth writing Sequences file to disk
-    # velvet_opt = main_pipeline.merge(
-    #     name='velvet_opt',
-    #     task_func=tompltools.generate_job_function(
-    #         job_script='src/sh/velvet_opt',
-    #         job_name='velvet_opt',
-    #         cpus_per_task=1,
-    #         mem_per_cpu=7500,
-    #         nice=1000,
-    #         verbose=True),
-    #     input=decon,
-    #     output='output/velvet_opt/velvet_opt_logfile.txt')
 
     ###################
     # RUFFUS COMMANDS #

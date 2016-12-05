@@ -20,26 +20,41 @@ export OMP_THREAD_LIMIT="${max_cpus}"
 # set velveth binary
 my_velveth="bin/velvet/velveth"
 
-# match input files
+# pair the files
 for fq_file in "${input_fq[@]}"; do
     bn="$(basename "${fq_file}" .fastq.gz)"
-    if grep -q "_R1_" <<< "${bn}"; then
+    if grep -q "_R1" <<< "${bn}"; then
         if grep -q "2125-01-11-1" <<< "${bn}"; then
-            pe_r1="${fq_file}"
-        elif grep -q "2125-01-06-1" <<< "${bn}"; then
-            mp_r1="${fq_file}"
+            ifq_r1="${fq_file}"
+        elif grep -q "_pe" <<< "${bn}"; then
+            ifq_pe_r1="${fq_file}"
+        elif grep -q "_se" <<< "${bn}"; then
+            ifq_se_r1="${fq_file}"
+        elif grep -q "_mp" <<< "${bn}"; then
+            ifq_mp_r1="${fq_file}"
+        elif grep -q "_unknown" <<< "${bn}"; then
+            ifq_unk_r1="${fq_file}"
         fi
-    elif grep -q "_R2_" <<< "${bn}"; then
+    elif grep -q "_R2" <<< "${bn}"; then
         if grep -q "2125-01-11-1" <<< "${bn}"; then
-            pe_r2="${fq_file}"
-        elif grep -q "2125-01-06-1" <<< "${bn}"; then
-            mp_r2="${fq_file}"
+            ifq_r2="${fq_file}"
+        elif grep -q "_pe" <<< "${bn}"; then
+            ifq_pe_r2="${fq_file}"
+        elif grep -q "_se" <<< "${bn}"; then
+            ifq_se_r2="${fq_file}"
+        elif grep -q "_mp" <<< "${bn}"; then
+            ifq_mp_r2="${fq_file}"
+        elif grep -q "_unknown" <<< "${bn}"; then
+            ifq_unk_r2="${fq_file}"
         fi
     fi
 done
 
-printf "\tpe_r1: %s\n\tpe_r2: %s\n" "${pe_r1}" "${pe_r2}"
-printf "\tmp_r1: %s\n\tmp_r2: %s\n" "${mp_r1}" "${mp_r2}"
+printf "\tfq_r1: %s\n\tfq_r2: %s\n" "${ifq_r1}" "${ifq_r2}"
+printf "\tifq_pe_r1: %s\n\tifq_pe_r2: %s\n" "${ifq_pe_r1}" "${ifq_pe_r2}"
+printf "\tifq_se_r1: %s\n\tifq_se_r2: %s\n" "${ifq_se_r1}" "${ifq_se_r2}"
+printf "\tifq_mp_r1: %s\n\tifq_mp_r2: %s\n" "${ifq_mp_r1}" "${ifq_mp_r2}"
+printf "\tifq_unk_r1: %s\n\tifq_unk_r2: %s\n" "${ifq_unk_r1}" "${ifq_unk_r2}"
 
 # parameters
  maxkmerlength="77"
@@ -59,7 +74,7 @@ shopt -u extglob
 
 # run velveth
 log_file="${outdir}/velveth.log.txt"
-srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+echo srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
     --job-name="velveth" --output="${log_file}" "${cmd[@]}" &
 printf "[ %s: Waiting for velveth to finish ]\n" "$(date)"
 FAIL=0
@@ -75,7 +90,7 @@ cat <<- _EOF_ > "${metadata_file}"
     branch,$(git rev-parse --abbrev-ref HEAD)
     hash,$(git rev-parse HEAD)
     date,$(date +%F)
-    velveth version,$("${my_velveth}" 2>&1 | sed '2q;d')
+    NxTrim version,$(bin/nxtrim 2>&1 | sed '3q;d')
     output,${outdir}
 _EOF_
 
