@@ -70,8 +70,6 @@ printf "%s " "${cmd[@]//+([[:blank:]])/ }"
 printf "\n"
 shopt -u extglob
 
-exit 0
-
 # run bbmap
 log_file="${outdir}/${bn}_bbmap.log.txt"
 srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \

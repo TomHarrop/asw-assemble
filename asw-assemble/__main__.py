@@ -158,16 +158,16 @@ def main():
 
     # prepare files with velveth
     # set threads for velvet to 1 !!!
-    hash_files = main_pipeline.merge(
-        name='hash_files',
-        task_func=tompltools.generate_job_function(
-            job_script='src/sh/hash_files',
-            job_name='hash_files',
-            ntasks=1,
-            cpus_per_task=1,
-            mem_per_cpu=60000),
-        input=decon,
-        output=['output/velveth/Sequences'])
+    # hash_files = main_pipeline.merge(
+    #     name='hash_files',
+    #     task_func=tompltools.generate_job_function(
+    #         job_script='src/sh/hash_files',
+    #         job_name='hash_files',
+    #         ntasks=1,
+    #         cpus_per_task=1,
+    #         mem_per_cpu=60000),
+    #     input=decon,
+    #     output=['output/velveth/Sequences'])
 
     ###################
     # RUFFUS COMMANDS #
