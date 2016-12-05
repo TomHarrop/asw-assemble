@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+printf "[ %s: Trim and demux mp reads with NxTrim ]\n" \
+    "$(date)"
+
+# shellcheck disable=SC1091
+source "src/sh/bash_header"
+# shellcheck disable=SC1091
+source "src/sh/io_parser"
+
+# make outdir
+outdir="$(dirname "${output_fq}")"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+# pair the files
+for fq_file in "${input_fq[@]}"; do
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "_R1_" <<< "${bn}"; then
+        fq_r1="${fq_file}"
+    elif grep -q "_R2_" <<< "${bn}"; then
+        fq_r2="${fq_file}"
+    fi
+done
+
+printf "\tfq_r1: %s\n\tfq_r2: %s\n" "${fq_r1}" "${fq_r2}"
+
+# build the command
+bn="$(basename "${fq_r1}" _R1_trimmed.fastq.gz)"
+out_prefix="${outdir}/${bn}"
+log_file="${outdir}/${bn}_nxtrim.log.txt"
+cmd=( bin/nxtrim --r1 "${fq_r1}" --r2 "${fq_r2}" -O "${out_prefix}" )
+
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+# run nxtrim
+srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+    --output="${log_file}" "${cmd[@]}" &
+printf "[ %s: Waiting for NxTrim to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+# log metadata
+metadata_file="${outdir}/${bn}.METADATA.csv"
+
+printf "[ %s: Logging metadata ]\n" "$(date)"
+printf "metadata_file: %s\n" "${metadata_file}"
+cat <<- _EOF_ > "${metadata_file}"
+    Script,${0}
+    branch,$(git rev-parse --abbrev-ref HEAD)
+    hash,$(git rev-parse HEAD)
+    date,$(date +%F)
+    NxTrim version,$(bin/nxtrim 2>&1 | sed '3q;d')
+    output,${outdir}
+_EOF_
+
+printf "[ %s: Done ]\n" "$(date)"
+
+exit 0

@@ -17,14 +17,20 @@ fi
 # pair the files
 for fq_file in "${input_fq[@]}"; do
     bn="$(basename "${fq_file}" .fastq.gz)"
-    if grep -q "_R1_" <<< "${bn}"; then
+    if grep -q "_R1" <<< "${bn}"; then
         fq_r1="${fq_file}"
-    elif grep -q "_R2_" <<< "${bn}"; then
+    elif grep -q "_R2" <<< "${bn}"; then
         fq_r2="${fq_file}"
+    else
+        fq_r1r2="${fq_file}"
     fi
 done
 
-printf "       fq_r1: %s\n       fq_r2: %s\n" "${fq_r1}" "${fq_r2}"
+if [[ ! -z "${fq_r1r2-}" ]]; then
+    printf "Interleaved input: %s\n" "${fq_r1r2}"
+else
+    printf "       fq_r1: %s\n       fq_r2: %s\n" "${fq_r1}" "${fq_r2}"
+fi
 
 for fq_file in "${output_fq[@]}"; do
     bn="$(basename "${fq_file}" .fastq.gz)"
@@ -48,10 +54,15 @@ printf "       stats: %s\n" "${stats}"
 printf "         ref: %s\n" "${ref}"
 
 # build command
-
 cmd=( bin/bbmap/bbduk.sh ziplevel=9 threads="${max_cpus}" "-Xmx${java_ram}"
-      in="${fq_r1}" in2="${fq_r2}" ref="${ref}" stats="${stats}"
+      ref="${ref}" stats="${stats}"
       out="${ofq_r1}" out2="${ofq_r2}" )
+
+if [[ ! -z "${fq_r1r2-}" ]]; then
+    cmd+=( in="${fq_r1r2-}" )
+else
+    cmd+=( in="${fq_r1}" in2="${fq_r2}" )
+fi
 
 shopt -s extglob
 printf "Final command line: "

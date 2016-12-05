@@ -23,17 +23,17 @@ minimum_length=50
 # pair the files
 for fq_file in "${input_fq[@]}"; do
     bn="$(basename "${fq_file}" .fastq.gz)"
-    if grep -q "_R1_" <<< "${bn}"; then
+    if grep -q "_R1" <<< "${bn}"; then
         fq_r1="${fq_file}"
-    elif grep -q "_R2_" <<< "${bn}"; then
+    elif grep -q "_R2" <<< "${bn}"; then
         fq_r2="${fq_file}"
     fi
 done
 for fq_file in "${output_fq[@]}"; do
     bn="$(basename "${fq_file}" .fastq.gz)"
-    if grep -q "_R1_" <<< "${bn}"; then
+    if grep -q "_R1" <<< "${bn}"; then
         ofq_r1="${fq_file}"
-    elif grep -q "_R2_" <<< "${bn}"; then
+    elif grep -q "_R2" <<< "${bn}"; then
         ofq_r2="${fq_file}"
     fi
 done
