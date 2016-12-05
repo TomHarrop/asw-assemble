@@ -109,14 +109,14 @@ def main():
         filter=ruffus.regex(
             r'.+?/2125-01-06-1_R(?P<RN>\d)_trimmed.fastq.gz'),
         output=[
-            r'output/nxtrim/2125-01-06-1_pe_R1.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_pe_R2.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_se_R1.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_se_R2.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_mp_R1.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_mp_R2.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_unknown_R1.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_unknown_R2.fastq.gz'])
+            r'output/nxtrim/2125-01-06-1_R1.pe.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_R2.pe.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_R1.se.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_R2.se.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_R1.mp.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_R2.mp.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_R1.unknown.fastq.gz',
+            r'output/nxtrim/2125-01-06-1_R2.unknown.fastq.gz'])
 
     # decontaminate PhiX (other?) sequences
     decon_mp = main_pipeline.collate(
@@ -128,7 +128,7 @@ def main():
             x for x in tompytools.flatten_list(
                 mp_nxtrim.__dict__['parsed_args']['output'])],
         filter=ruffus.formatter(
-            r'.+/2125-01-06-1_(?P<VL>[^.]+)_R(?P<RN>\d).fastq.gz'),
+            r'.+/2125-01-06-1_R(?P<RN>\d)\.(?P<VL>[^.]+)\.fastq.gz'),
         output=[
             'output/decon/2125-01-06-1_R1_{VL[0]}.fastq.gz',
             'output/decon/2125-01-06-1_R2_{VL[0]}.fastq.gz'])\

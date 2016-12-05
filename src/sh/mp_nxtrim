@@ -56,7 +56,7 @@ printf "\tofq_unk_r1: %s\n\tofq_unk_r2: %s\n" "${ofq_unk_r1}" "${ofq_unk_r2}"
 
 # build the command
 bn="$(basename "${fq_r1}" _R1_trimmed.fastq.gz)"
-out_prefix="${outdir}/${bn}_"
+out_prefix="${outdir}/${bn}"
 log_file="${outdir}/${bn}_nxtrim.log.txt"
 cmd=( bin/nxtrim --r1 "${fq_r1}" --r2 "${fq_r2}" -O "${out_prefix}"
       --separate )
