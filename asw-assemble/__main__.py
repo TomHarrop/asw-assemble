@@ -100,6 +100,11 @@ def main():
                 'output/cutadapt/{LIB[0]}_R2_trimmed.fastq.gz']])
 
     # send external adaptor-trimmed mp reads to nxtrim
+    nxtrim_output_files = [
+        'output/nxtrim/2125-01-06-1.pe.fastq.gz',
+        'output/nxtrim/2125-01-06-1.se.fastq.gz',
+        'output/nxtrim/2125-01-06-1.mp.fastq.gz',
+        'output/nxtrim/2125-01-06-1.unknown.fastq.gz']
     mp_nxtrim = main_pipeline.transform(
         name='mp_nxtrim',
         task_func=tompltools.generate_job_function(
@@ -108,15 +113,7 @@ def main():
         input=trim_cutadapt,
         filter=ruffus.regex(
             r'.+?/2125-01-06-1_R(?P<RN>\d)_trimmed.fastq.gz'),
-        output=[
-            r'output/nxtrim/2125-01-06-1_R1.pe.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_R2.pe.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_R1.se.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_R2.se.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_R1.mp.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_R2.mp.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_R1.unknown.fastq.gz',
-            r'output/nxtrim/2125-01-06-1_R2.unknown.fastq.gz'])
+        output=nxtrim_output_files)
 
     # decontaminate PhiX (other?) sequences
     decon_mp = main_pipeline.collate(
@@ -124,14 +121,11 @@ def main():
         task_func=tompltools.generate_job_function(
             job_script='src/sh/decon',
             job_name='decon_mp'),
-        input=[
-            x for x in tompytools.flatten_list(
-                mp_nxtrim.__dict__['parsed_args']['output'])],
+        input=nxtrim_output_files,
         filter=ruffus.formatter(
-            r'.+/2125-01-06-1_R(?P<RN>\d)\.(?P<VL>[^.]+)\.fastq.gz'),
-        output=[
-            'output/decon/2125-01-06-1_R1_{VL[0]}.fastq.gz',
-            'output/decon/2125-01-06-1_R2_{VL[0]}.fastq.gz'])\
+            r'.+/2125-01-06-1\.(?P<VL>[^.]+)\.fastq.gz'),
+        output=['output/decon/2125-01-06-1_R1_{VL[0]}.fastq.gz',
+                'output/decon/2125-01-06-1_R2_{VL[0]}.fastq.gz'])\
         .follows(mp_nxtrim)
 
     decon_pe = main_pipeline.transform(

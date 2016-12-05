@@ -30,8 +30,7 @@ printf "\tfq_r1: %s\n\tfq_r2: %s\n" "${fq_r1}" "${fq_r2}"
 bn="$(basename "${fq_r1}" _R1_trimmed.fastq.gz)"
 out_prefix="${outdir}/${bn}"
 log_file="${outdir}/${bn}_nxtrim.log.txt"
-cmd=( bin/nxtrim --r1 "${fq_r1}" --r2 "${fq_r2}" -O "${out_prefix}"
-      --separate )
+cmd=( bin/nxtrim --r1 "${fq_r1}" --r2 "${fq_r2}" -O "${out_prefix}" )
 
 shopt -s extglob
 printf "Final command line: "
@@ -40,7 +39,7 @@ printf "\n"
 shopt -u extglob
 
 # run nxtrim
-echo srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
     --output="${log_file}" "${cmd[@]}" &
 printf "[ %s: Waiting for NxTrim to finish ]\n" "$(date)"
 FAIL=0
