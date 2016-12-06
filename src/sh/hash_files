@@ -14,8 +14,8 @@ if [[ ! -d "${outdir}" ]]; then
     mkdir -p "${outdir}"
 fi
 
-# set number of processors
-export OMP_THREAD_LIMIT="${max_cpus}"
+# set number of processors (doesn't work on biochemcompute)
+# export OMP_THREAD_LIMIT="${max_cpus}"
 
 # set velveth binary
 my_velveth="bin/velvet/velveth"
@@ -63,19 +63,24 @@ printf "\tifq_unk_r1: %s\n\tifq_unk_r2: %s\n" "${ifq_unk_r1}" "${ifq_unk_r2}"
 
 # build command
 cmd=( "${my_velveth}" "${outdir}" "${minkmerlength},${maxkmerlength},${step}"
-       -shortPaired -fastq -separate "${pe_r1}" "${pe_r2}" 
-       -shortPaired2 -fastq -separate "${mp_r1}" "${mp_r2}"
-       -create_binary )
+      -short        -fastq           "${ifq_se_r1}"  "${ifq_se_r2}"
+      -shortPaired  -fastq -separate "${ifq_r1}"     "${ifq_r2}"
+      -shortPaired2 -fastq -separate "${ifq_pe_r1}"  "${ifq_pe_r2}"
+      -shortPaired3 -fastq -separate "${ifq_mp_r1}"  "${ifq_mp_r2}"
+      -shortPaired4 -fastq -separate "${ifq_unk_r1}" "${ifq_unk_r2}"
+      -create_binary )
 shopt -s extglob
 printf "Final command line: "
 printf "%s " "${cmd[@]//+([[:blank:]])/ }"
 printf "\n"
 shopt -u extglob
 
+exit 1
+
 # run velveth
 log_file="${outdir}/velveth.log.txt"
-echo srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
-    --job-name="velveth" --output="${log_file}" "${cmd[@]}" &
+"${cmd[@]}" &> "${log_file}" &
+
 printf "[ %s: Waiting for velveth to finish ]\n" "$(date)"
 FAIL=0
 fail_wait
@@ -90,7 +95,7 @@ cat <<- _EOF_ > "${metadata_file}"
     branch,$(git rev-parse --abbrev-ref HEAD)
     hash,$(git rev-parse HEAD)
     date,$(date +%F)
-    NxTrim version,$(bin/nxtrim 2>&1 | sed '3q;d')
+    velveth,$("${my_velveth}" 2>&1 | sed '2q;d')
     output,${outdir}
 _EOF_
 
