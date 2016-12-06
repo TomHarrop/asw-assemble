@@ -11,14 +11,16 @@ source "src/sh/io_parser"
 # make outdir
 outdir="$(dirname "${other_output}")"
 for oo in "${other_output[@]}"; do
-    if grep -q "_R1_" <<< "$(basename "${oo}")"; then 
-        bn="$(basename "${oo//_R1/}" _fastqc.html)"
+    if grep -q "_R1" <<< "$(basename "${oo}")"; then 
+        bn="$(basename "${oo//_R1/}" .fastq.gz.quality)"
     fi
 done
-log_file="${outdir}/SolexaQC.${bn}.log.txt"
+log_file="${outdir}/${bn}_solexaqc.log.txt"
 if [[ ! -d "${outdir}" ]]; then
     mkdir -p "${outdir}"
 fi
+
+exit 1
 
 # build command (SolexaQA doesn't care about R1 and R2)
 my_solexaqc="bin/SolexaQA++"

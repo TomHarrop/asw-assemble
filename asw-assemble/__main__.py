@@ -161,8 +161,7 @@ def main():
         name='solexaqc',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/solexaqc',
-            job_name='solexaqc',
-            cpus_per_task=2),
+            job_name='solexaqc'),
         input=decon,
         filter=ruffus.formatter(
             r'.+/(?P<LN>[^_]+)_R(?P<RN>\d)(?P<VL>_?\w*).fastq.gz'),
