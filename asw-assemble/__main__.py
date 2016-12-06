@@ -156,18 +156,32 @@ def main():
             [r'output/fastqc/{LN[0]}_R1{VL[0]}_fastqc.html',
              r'output/fastqc/{LN[0]}_R2{VL[0]}_fastqc.html']])
 
+    # run solexaqc on decontaminated libraries
+    main_pipeline.subdivide(
+        name='solexaqc',
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/solexaqc',
+            job_name='solexaqc',
+            cpus_per_task=2),
+        input=decon,
+        filter=ruffus.formatter(
+            r'.+/(?P<LN>[^_]+)_R(?P<RN>\d)(?P<VL>_?\w*).fastq.gz'),
+        output=[
+            [r'output/solexaqc/{LN[0]}_R1{VL[0]}.fastq.gz.quality',
+             r'output/solexaqc/{LN[0]}_R2{VL[0]}.fastq.gz.quality']])
+
     # prepare files with velveth
     # set threads for velvet to 1 !!!
-    hash_files = main_pipeline.merge(
-        name='hash_files',
-        task_func=tompltools.generate_job_function(
-            job_script='src/sh/hash_files',
-            job_name='hash_files',
-            ntasks=1,
-            cpus_per_task=1,
-            mem_per_cpu=60000),
-        input=decon,
-        output=['output/velveth/Sequences'])
+    # hash_files = main_pipeline.merge(
+    #     name='hash_files',
+    #     task_func=tompltools.generate_job_function(
+    #         job_script='src/sh/hash_files',
+    #         job_name='hash_files',
+    #         ntasks=1,
+    #         cpus_per_task=1,
+    #         mem_per_cpu=60000),
+    #     input=decon,
+    #     output=['output/velveth/Sequences'])
 
     ###################
     # RUFFUS COMMANDS #
