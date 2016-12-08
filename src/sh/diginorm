@@ -67,7 +67,7 @@ fi
 
 # run first pass
 output_1="${tmp_outdir}/ouput_1.fastq"
-graph_1="${tmp_outdir}/graph_1.fastq"
+graph_1="${tmp_outdir}/graph_1"
 
 cmd1=( khmer normalize-by-median --ksize 20 --max-memory-usage "${ram_limit}"
        --output "${output_1}" --savegraph "${graph_1}" )
@@ -162,9 +162,9 @@ fi
 # extract paired reads
 
 cmd5=( khmer extract-paired-reads --output-dir "${outdir}"
-       --output-paired "${output_proper}"
+       --gzip --output-paired "${output_proper}"
        --output-single "${output_orphans}" "${output_4}" )
-    
+
 shopt -s extglob
 printf "Final command line: "
 printf "%s " "${cmd5[@]//+([[:blank:]])/ }"
