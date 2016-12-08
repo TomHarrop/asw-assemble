@@ -157,7 +157,7 @@ def main():
              r'output/fastqc/{LN[0]}_R2{VL[0]}_fastqc.html']])
 
     # digital normalisation w/ khmer
-    main_pipeline.subdivide(
+    diginorm = main_pipeline.subdivide(
         name='diginorm',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/diginorm',
@@ -170,26 +170,30 @@ def main():
         output=[[r'output/khmer/{LN[0]}{VL[0]}_proper.fastq.gz',
                 r'output/khmer/{LN[0]}{VL[0]}_orphans.fastq.gz']])
 
+    # select files for hashing
+    velveth_input_files = [x.path for x in os.scandir('output/khmer')
+                           if (x.name.endswith('fastq.gz')
+                           or x.name.endswith('.fastq'))
+                           and x.is_file()
+                           and (('proper' in x.name and 'se' not in x.name)
+                                or ('se_orphans' in x.name))]
+
     # # prepare files with velveth
     # # set threads for velvet to 1 !!!
-    # min_kmer = 45
-    # max_kmer = 77
-    # step = 8
-    # kmer_lengths = [x for x in range(min_kmer, max_kmer + 1, step)]
-    # velveth_output = list(
-    #     tompytools.flatten_list(
-    #         [('output/velveth_' + str(x) + '/Sequences')
-    #          for x in kmer_lengths]))
-    # hash_files = main_pipeline.merge(
-    #     name='hash_files',
-    #     task_func=tompltools.generate_job_function(
-    #         job_script='src/sh/hash_files',
-    #         job_name='hash_files',
-    #         ntasks=1,
-    #         cpus_per_task=1,
-    #         mem_per_cpu=60000),
-    #     input=decon,
-    #     output=velveth_output)
+    min_kmer = 71
+    max_kmer = 87
+    step = 8
+    kmer_lengths = [x for x in range(min_kmer, max_kmer + 1, step)]
+    velveth_output = list(
+        tompytools.flatten_list(
+            [('output/velveth_' + str(x) + '/Sequences')
+             for x in kmer_lengths]))
+    main_pipeline.merge(
+        name='velveth',
+        task_func=test_job_function,
+        input=velveth_input_files,
+        output=velveth_output)\
+        .follows(diginorm)
 
     # # run velvetg on hash files
     # velvet_assembly = main_pipeline.subdivide(

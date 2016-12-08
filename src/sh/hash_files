@@ -10,6 +10,7 @@ source "src/sh/io_parser"
 
 # make outdir
 outdir="$(dirname "${other_output}")"
+outdir="${outdir//_*/}"
 if [[ ! -d "${outdir}" ]]; then
     mkdir -p "${outdir}"
 fi
@@ -20,54 +21,40 @@ fi
 # set velveth binary
 my_velveth="bin/velvet/velveth"
 
-# pair the files
+# separate the input fq by library typew
 for fq_file in "${input_fq[@]}"; do
     bn="$(basename "${fq_file}" .fastq.gz)"
-    if grep -q "_R1" <<< "${bn}"; then
-        if grep -q "2125-01-11-1" <<< "${bn}"; then
-            ifq_r1="${fq_file}"
-        elif grep -q "_pe" <<< "${bn}"; then
-            ifq_pe_r1="${fq_file}"
-        elif grep -q "_se" <<< "${bn}"; then
-            ifq_se_r1="${fq_file}"
-        elif grep -q "_mp" <<< "${bn}"; then
-            ifq_mp_r1="${fq_file}"
-        elif grep -q "_unknown" <<< "${bn}"; then
-            ifq_unk_r1="${fq_file}"
-        fi
-    elif grep -q "_R2" <<< "${bn}"; then
-        if grep -q "2125-01-11-1" <<< "${bn}"; then
-            ifq_r2="${fq_file}"
-        elif grep -q "_pe" <<< "${bn}"; then
-            ifq_pe_r2="${fq_file}"
-        elif grep -q "_se" <<< "${bn}"; then
-            ifq_se_r2="${fq_file}"
-        elif grep -q "_mp" <<< "${bn}"; then
-            ifq_mp_r2="${fq_file}"
-        elif grep -q "_unknown" <<< "${bn}"; then
-            ifq_unk_r2="${fq_file}"
-        fi
+    if grep -q "2125-01-11-1" <<< "${bn}"; then
+        ifq="${fq_file}"
+    elif grep -q "_pe_" <<< "${bn}"; then
+        ifq_pe="${fq_file}"
+    elif grep -q "_se_" <<< "${bn}"; then
+        ifq_se="${fq_file}"
+    elif grep -q "_mp_" <<< "${bn}"; then
+        ifq_mp="${fq_file}"
+    elif grep -q "_unknown_" <<< "${bn}"; then
+        ifq_unk="${fq_file}"
     fi
 done
 
-printf "\tfq_r1: %s\n\tfq_r2: %s\n" "${ifq_r1}" "${ifq_r2}"
-printf "\tifq_pe_r1: %s\n\tifq_pe_r2: %s\n" "${ifq_pe_r1}" "${ifq_pe_r2}"
-printf "\tifq_se_r1: %s\n\tifq_se_r2: %s\n" "${ifq_se_r1}" "${ifq_se_r2}"
-printf "\tifq_mp_r1: %s\n\tifq_mp_r2: %s\n" "${ifq_mp_r1}" "${ifq_mp_r2}"
-printf "\tifq_unk_r1: %s\n\tifq_unk_r2: %s\n" "${ifq_unk_r1}" "${ifq_unk_r2}"
+printf "\tifq: %s\n" "${ifq}"
+printf "\tifq_pe: %s\n" "${ifq_pe}"
+printf "\tifq_se: %s\n" "${ifq_se}"
+printf "\tifq_mp: %s\n" "${ifq_mp}"
+printf "\tifq_unk: %s\n" "${ifq_unk}"
 
 # parameters
- maxkmerlength="77"
- minkmerlength="45"
+ maxkmerlength="87"
+ minkmerlength="71"
           step="8"
 
 # build command
 cmd=( "${my_velveth}" "${outdir}" "${minkmerlength},${maxkmerlength},${step}"
-      -short        -fastq           "${ifq_se_r1}"  "${ifq_se_r2}"
-      -shortPaired  -fastq -separate "${ifq_r1}"     "${ifq_r2}"
-      -shortPaired2 -fastq -separate "${ifq_pe_r1}"  "${ifq_pe_r2}"
-      -shortPaired3 -fastq -separate "${ifq_mp_r1}"  "${ifq_mp_r2}"
-      -shortPaired4 -fastq -separate "${ifq_unk_r1}" "${ifq_unk_r2}"
+      -short        -fastq           "${ifq_se}"
+      -shortPaired  -fastq "${ifq}"
+      -shortPaired2 -fastq "${ifq_pe}"
+      -shortPaired3 -fastq "${ifq_mp}"
+      -shortPaired4 -fastq "${ifq_unk}"
       -create_binary )
 shopt -s extglob
 printf "Final command line: "
