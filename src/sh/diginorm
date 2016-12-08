@@ -159,25 +159,30 @@ else
     output_4="${output_1}"
 fi
 
-# extract paired reads
+# if we're in single-end mode just zip output
+if [[ "${mode}" == "single_end" ]]; then
+    gzip -9 < "${output_4}" > "${output_orphans}"
+    touch "${output_proper}"
+else
+    # extract paired reads
+    cmd5=( khmer extract-paired-reads --output-dir "${outdir}"
+           --gzip --output-paired "${output_proper}"
+           --output-single "${output_orphans}" "${output_4}" )
 
-cmd5=( khmer extract-paired-reads --output-dir "${outdir}"
-       --gzip --output-paired "${output_proper}"
-       --output-single "${output_orphans}" "${output_4}" )
+    shopt -s extglob
+    printf "Final command line: "
+    printf "%s " "${cmd5[@]//+([[:blank:]])/ }"
+    printf "\n"
+    shopt -u extglob
 
-shopt -s extglob
-printf "Final command line: "
-printf "%s " "${cmd5[@]//+([[:blank:]])/ }"
-printf "\n"
-shopt -u extglob
+    log_file="${outdir}/${bn}_extract-paired-reads2.log.txt"
+    srun --ntasks=1 --cpus-per-task=1 --exclusive \
+        --output="${log_file}" "${cmd5[@]}" &
 
-log_file="${outdir}/${bn}_extract-paired-reads2.log.txt"
-srun --ntasks=1 --cpus-per-task=1 --exclusive \
-    --output="${log_file}" "${cmd5[@]}" &
-
-printf "[ %s: Waiting for extract-paired-reads to finish ]\n" "$(date)"
-FAIL=0
-fail_wait
+    printf "[ %s: Waiting for extract-paired-reads to finish ]\n" "$(date)"
+    FAIL=0
+    fail_wait
+fi
 
 # clean up temporary files
 printf "[ %s: Removing temporary directory %s ]\n" "$(date)" "${tmp_outdir}"
