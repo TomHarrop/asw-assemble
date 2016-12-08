@@ -156,21 +156,30 @@ def main():
             [r'output/fastqc/{LN[0]}_R1{VL[0]}_fastqc.html',
              r'output/fastqc/{LN[0]}_R2{VL[0]}_fastqc.html']])
 
-    # run solexaqc on decontaminated libraries
+    # digital normalisation w/ khmer
     main_pipeline.subdivide(
-        name='solexaqc',
+        name='diginorm',
         task_func=tompltools.generate_job_function(
-            job_script='src/sh/solexaqc',
-            job_name='solexaqc'),
+            job_script='src/sh/diginorm',
+            job_name='diginorm',
+            mem_per_cpu=7500,
+            cpus_per_task=4),
         input=decon,
         filter=ruffus.formatter(
             r'.+/(?P<LN>[^_]+)_R(?P<RN>\d)(?P<VL>_?\w*).fastq.gz'),
-        output=[
-            [r'output/solexaqc/{LN[0]}_R1{VL[0]}.fastq.gz.quality',
-             r'output/solexaqc/{LN[0]}_R2{VL[0]}.fastq.gz.quality']])
+        output=[[r'output/khmer/{LN[0]}{VL[0]}_proper.fastq.gz',
+                r'output/khmer/{LN[0]}{VL[0]}_orphans.fastq.gz']])
 
-    # prepare files with velveth
-    # set threads for velvet to 1 !!!
+    # # prepare files with velveth
+    # # set threads for velvet to 1 !!!
+    # min_kmer = 45
+    # max_kmer = 77
+    # step = 8
+    # kmer_lengths = [x for x in range(min_kmer, max_kmer + 1, step)]
+    # velveth_output = list(
+    #     tompytools.flatten_list(
+    #         [('output/velveth_' + str(x) + '/Sequences')
+    #          for x in kmer_lengths]))
     # hash_files = main_pipeline.merge(
     #     name='hash_files',
     #     task_func=tompltools.generate_job_function(
@@ -180,7 +189,16 @@ def main():
     #         cpus_per_task=1,
     #         mem_per_cpu=60000),
     #     input=decon,
-    #     output=['output/velveth/Sequences'])
+    #     output=velveth_output)
+
+    # # run velvetg on hash files
+    # velvet_assembly = main_pipeline.subdivide(
+    #     name='velvet_assembly',
+    #     task_func=test_job_function,
+    #     input=velveth_output,
+    #     filter=ruffus.suffix("Sequences"),
+    #     output=["Log"])\
+    #     .follows(hash_files)
 
     ###################
     # RUFFUS COMMANDS #

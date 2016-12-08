@@ -20,8 +20,6 @@ if [[ ! -d "${outdir}" ]]; then
     mkdir -p "${outdir}"
 fi
 
-exit 1
-
 # build command (SolexaQA doesn't care about R1 and R2)
 my_solexaqc="bin/SolexaQA++"
 cmd=( "${my_solexaqc}" analysis "${input_fq[@]}" --directory "${outdir}"

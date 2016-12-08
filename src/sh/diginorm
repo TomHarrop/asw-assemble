@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+
+printf "[ %s: Digital normalization of libraries ]\n" \
+    "$(date)"
+
+# shellcheck disable=SC1091
+source "src/sh/bash_header"
+# shellcheck disable=SC1091
+source "src/sh/io_parser"
+
+# make outdir
+outdir="$(dirname "${output_fq}")"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+# pair the files
+for fq_file in "${input_fq[@]}"; do
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "_R1" <<< "${bn}"; then
+        fq_r1="${fq_file}"
+    elif grep -q "_R2" <<< "${bn}"; then
+        fq_r2="${fq_file}"
+    fi
+done
+
+printf "\tfq_r1: %s\n\tfq_r2: %s\n" "${fq_r1}" "${fq_r2}"
+
+# match the output files
+for fq_file in "${output_fq[@]}"; do
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "_proper" <<< "${bn}"; then
+        output_proper="${fq_file}"
+    elif grep -q "_orphans" <<< "${bn}"; then
+        output_orphans="${fq_file}"
+    fi
+done
+
+printf "\toutput_proper: %s\n\toutput_orphans: %s\n" \
+    "${output_proper}" "${output_orphans}"
+
+# decide what to do with the files
+bn="$(basename "${fq_r1//_R1/}" .fastq.gz)"
+if grep -q "2125-01-11-1" <<< "${bn}"; then
+    mode="three_pass"
+elif grep -q "_se" <<< "${bn}"; then
+    mode="single_end"
+else
+    mode="single_pass"
+fi
+
+printf "[ %s: Running in %s mode ]\n" "$(date)" "${mode}"
+
+# make temporary outdir
+script_name="$(basename "$0")"
+tmp_outdir="$(mktemp --tmpdir -d "${script_name}_tmp.XXXXXXXX")"
+
+# pre-process the files
+input_1="${tmp_outdir}/input_1.fastq"
+if [[ "${mode}" == "single_end" ]]; then
+    printf "[ %s: Concatenating R1 and R2 files ]\n" "$(date)"
+    zcat "${fq_r1}" "${fq_r2}" > "${input_1}"
+else
+    printf "[ %s: Interleaving R1 and R2 files ]\n" "$(date)"
+    bin/bbmap/reformat.sh in="${fq_r1}" in2="${fq_r2}" out="${input_1}"
+fi
+
+# run first pass
+output_1="${tmp_outdir}/ouput_1.fastq"
+graph_1="${tmp_outdir}/graph_1.fastq"
+
+cmd1=( khmer normalize-by-median --ksize 20 --max-memory-usage "${ram_limit}"
+       --output "${output_1}" --savegraph "${graph_1}" )
+
+if [[ "${mode}" == "three_pass" ]]; then
+    cmd1+=( --cutoff 20 )
+else
+    cmd1+=( --cutoff 10 )
+fi
+
+cmd1+=( "${input_1}" )
+
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd1[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+log_file="${outdir}/${bn}_normalize-by-median1.log.txt"
+srun --ntasks=1 --cpus-per-task=1 --exclusive \
+    --output="${log_file}" "${cmd1[@]}" &
+printf "[ %s: Waiting for normalize-by-median to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+# run second pass if necessary
+if [[ "${mode}" == "three_pass" ]]; then
+    # filter-abund
+    output_2="${tmp_outdir}/ouput_2.fastq"
+    cmd2=( khmer filter-abund --threads "${max_cpus}" --cutoff 1
+           --output "${output_2}" "${graph_1}" "${output_1}" )
+
+    shopt -s extglob
+    printf "Final command line: "
+    printf "%s " "${cmd2[@]//+([[:blank:]])/ }"
+    printf "\n"
+    shopt -u extglob
+
+    log_file="${outdir}/${bn}_filter-abund.log.txt"
+
+    srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+        --output="${log_file}" "${cmd2[@]}" &
+    printf "[ %s: Waiting for filter-abund to finish ]\n" "$(date)"
+    FAIL=0
+    fail_wait
+
+    # strip-and-split
+    output_3_paired="${tmp_outdir}/ouput_3_paired.fastq"
+    output_3_single="${tmp_outdir}/ouput_3_single.fastq"
+
+    cmd3=( khmer extract-paired-reads --output-dir "${tmp_outdir}"
+           --output-paired "${output_3_paired}"
+           --output-single "${output_3_single}" "${output_2}" )
+
+    shopt -s extglob
+    printf "Final command line: "
+    printf "%s " "${cmd3[@]//+([[:blank:]])/ }"
+    printf "\n"
+    shopt -u extglob
+
+    log_file="${outdir}/${bn}_extract-paired-reads.log.txt"
+    srun --ntasks=1 --cpus-per-task=1 --exclusive \
+        --output="${log_file}" "${cmd3[@]}" &
+    printf "[ %s: Waiting for extract-paired-reads to finish ]\n" "$(date)"
+    FAIL=0
+    fail_wait
+
+    # normalise again
+    output_4="${tmp_outdir}/ouput_4.fastq"
+    cmd4=( khmer normalize-by-median --ksize 20
+           --max-memory-usage "${ram_limit}" --cutoff 5
+           --output "${output_4}" --unpaired-reads "${output_3_single}"
+           "${output_3_paired}"  )
+
+    shopt -s extglob
+    printf "Final command line: "
+    printf "%s " "${cmd4[@]//+([[:blank:]])/ }"
+    printf "\n"
+    shopt -u extglob
+
+    log_file="${outdir}/${bn}_normalize-by-median2.log.txt"
+    srun --ntasks=1 --cpus-per-task=1 --exclusive \
+        --output="${log_file}" "${cmd4[@]}" &
+    printf "[ %s: Waiting for normalize-by-median to finish ]\n" "$(date)"
+    FAIL=0
+    fail_wait
+else
+    # if we're not in three_pass mode, use first pass output
+    output_4="${output_1}"
+fi
+
+# extract paired reads
+
+cmd5=( khmer extract-paired-reads --output-dir "${outdir}"
+       --output-paired "${output_proper}"
+       --output-single "${output_orphans}" "${output_4}" )
+    
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd5[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+log_file="${outdir}/${bn}_extract-paired-reads2.log.txt"
+srun --ntasks=1 --cpus-per-task=1 --exclusive \
+    --output="${log_file}" "${cmd5[@]}" &
+
+printf "[ %s: Waiting for extract-paired-reads to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+# clean up temporary files
+printf "[ %s: Removing temporary directory %s ]\n" "$(date)" "${tmp_outdir}"
+rm -r "${tmp_outdir}" || exit 1
+
+# log metadata
+metadata_file="${outdir}/${bn}.METADATA.csv"
+
+printf "[ %s: Logging metadata ]\n" "$(date)"
+printf "metadata_file: %s\n" "${metadata_file}"
+cat <<- _EOF_ > "${metadata_file}"
+    Script,${0}
+    branch,$(git rev-parse --abbrev-ref HEAD)
+    hash,$(git rev-parse HEAD)
+    date,$(date +%F)
+    khmer version,$( khmer normalize-by-median --version 2>&1 | sed '3q;d' )
+    output,${outdir}
+_EOF_
+
+printf "[ %s: Done ]\n" "$(date)"
+
+exit 0
