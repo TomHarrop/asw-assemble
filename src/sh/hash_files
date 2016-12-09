@@ -49,7 +49,8 @@ printf "\tifq_unk: %s\n" "${ifq_unk}"
           step="8"
 
 # build command
-cmd=( "${my_velveth}" "${outdir}" "${minkmerlength},${maxkmerlength},${step}"
+cmd=( "${my_velveth}" "${outdir}"
+      "${minkmerlength},$(( maxkmerlength + 1 )),${step}"
       -short        -fastq           "${ifq_se}"
       -shortPaired  -fastq "${ifq}"
       -shortPaired2 -fastq "${ifq_pe}"
