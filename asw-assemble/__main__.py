@@ -99,36 +99,32 @@ def main():
         output=[['output/cutadapt/{LIB[0]}_R1_trimmed.fastq.gz',
                 'output/cutadapt/{LIB[0]}_R2_trimmed.fastq.gz']])
 
-    # send external adaptor-trimmed mp reads to nxtrim
-    nxtrim_output_files = [
-        'output/nxtrim/2125-01-06-1.pe.fastq.gz',
-        'output/nxtrim/2125-01-06-1.se.fastq.gz',
-        'output/nxtrim/2125-01-06-1.mp.fastq.gz',
-        'output/nxtrim/2125-01-06-1.unknown.fastq.gz']
-    mp_nxtrim = main_pipeline.transform(
-        name='mp_nxtrim',
+    # send trimmed reads to splitnextera
+    mp_splitnextera = main_pipeline.subdivide(
+        name='splitnextera',
         task_func=tompltools.generate_job_function(
-            job_script='src/sh/mp_nxtrim',
-            job_name='mp_nxtrim'),
+            job_script='src/sh/splitnextera',
+            job_name='splitnextera'),
         input=trim_cutadapt,
         filter=ruffus.regex(
             r'.+?/2125-01-06-1_R(?P<RN>\d)_trimmed.fastq.gz'),
-        output=nxtrim_output_files)
+        output=['output/splitnextera/2125-01-06-1.pe.fastq.gz',
+                'output/splitnextera/2125-01-06-1.se.fastq.gz',
+                'output/splitnextera/2125-01-06-1.mp.fastq.gz',
+                'output/splitnextera/2125-01-06-1.unknown.fastq.gz'])
 
     # decontaminate PhiX (other?) sequences
-    decon_mp = main_pipeline.collate(
+    decon_mp = main_pipeline.transform(
         name='decon_mp',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/decon',
             job_name='decon_mp'),
-        input=nxtrim_output_files,
+        input=mp_splitnextera,
         filter=ruffus.formatter(
             r'.+/2125-01-06-1\.(?P<VL>[^.]+)\.fastq.gz'),
-        output=['output/decon/2125-01-06-1_R1_{VL[0]}.fastq.gz',
-                'output/decon/2125-01-06-1_R2_{VL[0]}.fastq.gz'])\
-        .follows(mp_nxtrim)
+        output=['output/decon/2125-01-06-1_{VL[0]}.fastq.gz'])
 
-    decon_pe = main_pipeline.transform(
+    decon_pe = main_pipeline.collate(
         name='decon_pe',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/decon',
@@ -136,39 +132,32 @@ def main():
         input=trim_cutadapt,
         filter=ruffus.regex(
             r'.+?/2125-01-11-1_R(?P<RN>\d)_trimmed.fastq.gz'),
-        output=[
-            r'output/decon/2125-01-11-1_R1.fastq.gz',
-            r'output/decon/2125-01-11-1_R2.fastq.gz'])
+        output=[r'output/decon/2125-01-11-1.fastq.gz'])
 
     decon = [decon_mp, decon_pe]
 
+    # digital normalisation and error correction w/ bbnorm
+    bbnorm = main_pipeline.subdivide(
+        name='bbnorm',
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/bbnorm',
+            job_name='bbnorm',
+            mem_per_cpu=7000,
+            cpus_per_task=8),
+        input=decon,
+        filter=ruffus.formatter(r'.+/(?P<LN>[^(_|.)]+)(?P<VL>_?\w*).fastq.gz'),
+        output=[r'output/bbnorm/{LN[0]}{VL[0]}.fastq.gz'])
+
     # run fastqc on decontaminated libraries
-    main_pipeline.subdivide(
+    main_pipeline.transform(
         name='fastqc',
         task_func=tompltools.generate_job_function(
             job_script='src/sh/fastqc',
             job_name='fastqc',
-            cpus_per_task=2),
-        input=decon,
-        filter=ruffus.formatter(
-            r'.+/(?P<LN>[^_]+)_R(?P<RN>\d)(?P<VL>_?\w*).fastq.gz'),
-        output=[
-            [r'output/fastqc/{LN[0]}_R1{VL[0]}_fastqc.html',
-             r'output/fastqc/{LN[0]}_R2{VL[0]}_fastqc.html']])
-
-    # digital normalisation w/ khmer
-    diginorm = main_pipeline.subdivide(
-        name='diginorm',
-        task_func=tompltools.generate_job_function(
-            job_script='src/sh/diginorm',
-            job_name='diginorm',
-            mem_per_cpu=7500,
-            cpus_per_task=4),
-        input=decon,
-        filter=ruffus.formatter(
-            r'.+/(?P<LN>[^_]+)_R(?P<RN>\d)(?P<VL>_?\w*).fastq.gz'),
-        output=[[r'output/khmer/{LN[0]}{VL[0]}_proper.fastq.gz',
-                r'output/khmer/{LN[0]}{VL[0]}_orphans.fastq.gz']])
+            cpus_per_task=1),
+        input=bbnorm,
+        filter=ruffus.formatter(r'.+/(?P<LN>[^(_|.)]+)(?P<VL>_?\w*).fastq.gz'),
+        output=[r'output/fastqc/{LN[0]}{VL[0]}_fastqc.html'])
 
     # select files for hashing
     velveth_input_files = [x.path for x in os.scandir('output/khmer')
@@ -188,12 +177,12 @@ def main():
         tompytools.flatten_list(
             [('output/velveth_' + str(x) + '/Sequences')
              for x in kmer_lengths]))
-    main_pipeline.merge(
-        name='velveth',
-        task_func=test_job_function,
-        input=velveth_input_files,
-        output=velveth_output)\
-        .follows(diginorm)
+    # velveth = main_pipeline.merge(
+    #     name='velveth',
+    #     task_func=test_job_function,
+    #     input=velveth_input_files,
+    #     output=velveth_output)\
+    #     .follows(diginorm)
 
     # # run velvetg on hash files
     # velvet_assembly = main_pipeline.subdivide(
