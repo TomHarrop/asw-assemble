@@ -160,23 +160,23 @@ def main():
         output=[r'output/fastqc/{LN[0]}{VL[0]}_fastqc.html'])
 
     # select files for hashing
-    velveth_input_files = [x.path for x in os.scandir('output/khmer')
-                           if (x.name.endswith('fastq.gz')
-                           or x.name.endswith('.fastq'))
-                           and x.is_file()
-                           and (('proper' in x.name and 'se' not in x.name)
-                                or ('se_orphans' in x.name))]
+    # velveth_input_files = [x.path for x in os.scandir('output/khmer')
+    #                        if (x.name.endswith('fastq.gz')
+    #                        or x.name.endswith('.fastq'))
+    #                        and x.is_file()
+    #                        and (('proper' in x.name and 'se' not in x.name)
+    #                             or ('se_orphans' in x.name))]
 
     # # prepare files with velveth
     # # set threads for velvet to 1 !!!
-    min_kmer = 71
-    max_kmer = 87
-    step = 8
-    kmer_lengths = [x for x in range(min_kmer, max_kmer + 1, step)]
-    velveth_output = list(
-        tompytools.flatten_list(
-            [('output/velveth_' + str(x) + '/Sequences')
-             for x in kmer_lengths]))
+    # min_kmer = 71
+    # max_kmer = 87
+    # step = 8
+    # kmer_lengths = [x for x in range(min_kmer, max_kmer + 1, step)]
+    # velveth_output = list(
+    #     tompytools.flatten_list(
+    #         [('output/velveth_' + str(x) + '/Sequences')
+    #          for x in kmer_lengths]))
     # velveth = main_pipeline.merge(
     #     name='velveth',
     #     task_func=test_job_function,

@@ -49,7 +49,7 @@ cmd=( bin/bbmap/bbduk.sh ziplevel=9 threads="${max_cpus}" "-Xmx${java_ram}"
       out="${output_fq}" )
 
 if [[ ! -z "${fq_r1r2-}" ]]; then
-    cmd+=( in="${fq_r1r2-}" )
+    cmd+=( in="${fq_r1r2}" )
 else
     cmd+=( in="${fq_r1}" in2="${fq_r2}" )
 fi
