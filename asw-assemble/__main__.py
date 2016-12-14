@@ -148,7 +148,7 @@ def main():
         filter=ruffus.formatter(r'.+/(?P<LN>[^(_|.)]+)(?P<VL>_?\w*).fastq.gz'),
         output=[r'output/bbnorm/{LN[0]}{VL[0]}.fastq.gz'])
 
-    # run fastqc on decontaminated libraries
+    # run fastqc on decontaminated and normalised libraries
     main_pipeline.transform(
         name='fastqc',
         task_func=tompltools.generate_job_function(
