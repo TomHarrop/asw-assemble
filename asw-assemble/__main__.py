@@ -177,8 +177,17 @@ def main():
         input=bbnorm,
 #        filter=ruffus.formatter(r'.+/(?P<LN>[^(_|.)]+)(?P<VL>_?\w*).fastq.gz'),
         filter=ruffus.regex(r'.+/2125-01-11-1.fastq.gz'),
-        output=[r'output/trunc_100/2125-01-11-1_R1.fastq.gz'
+        output=[r'output/trunc_100/2125-01-11-1_R1.fastq.gz',
                 r'output/trunc_100/2125-01-11-1_R2.fastq.gz'])
+
+    edena_overlaps = main_pipeline.collate(
+        name='edena_overlaps',
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/edena_overlaps',
+            job_name='edena_overlaps'),
+        input=clip_to_100b,
+        filter=ruffus.formatter(r'.+/(?P<LN>[^_]+)_R\d.fastq.gz'),
+        output=[r'output/edena/{LN[0]}.ovc'])
 
     # select files for hashing
     # velveth_input_files = [x.path for x in os.scandir('output/khmer')

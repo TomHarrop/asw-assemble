@@ -8,17 +8,6 @@ source "src/sh/bash_header"
 # shellcheck disable=SC1091
 source "src/sh/io_parser"
 
-# make outdir
-outdir="$(dirname "${output_fq}")"
-
-
-if [[ ! -d "${outdir}" ]]; then
-    mkdir -p "${outdir}"
-fi
-
-target_length=100
-printf "target_length: %s\n" "${target_length}"
-
 # pair the files
 for fq_file in "${output_fq[@]}"; do
     bn="$(basename "${fq_file}" .fastq.gz)"
@@ -29,6 +18,15 @@ for fq_file in "${output_fq[@]}"; do
     fi
 done
 printf "\tofq_r1: %s\n\tofq_r2: %s\n" "${ofq_r1}" "${ofq_r2}"
+
+# make outdir
+outdir="$(dirname "${ofq_r1}")"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+target_length=100
+printf "target_length: %s\n" "${target_length}"
 
 # build command
 bn="$(basename "${ofq_r1}" _R1.fastq.gz)"

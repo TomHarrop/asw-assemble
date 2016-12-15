@@ -8,3 +8,6 @@ ruffus/
 __pycache__
 bin/
 .Rproj.user
+.Rhistory
+asw-assemble.Rproj
+explore/
