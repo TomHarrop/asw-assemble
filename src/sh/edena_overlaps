@@ -18,11 +18,32 @@ if [[ ! -d "${outdir}" ]]; then
     mkdir -p "${outdir}"
 fi
 
+# pair the files
+for fq_file in "${input_fq[@]}"; do
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "_R1" <<< "${bn}"; then
+        fq_r1="${fq_file}"
+    elif grep -q "_R2" <<< "${bn}"; then
+        fq_r2="${fq_file}"
+    fi
+done
+
+# make temporary directory
+script_name="$(basename "$0")"
+tmp_outdir="$(mktemp --tmpdir -d "${script_name}_tmp.XXXXXXXX")"
+tmp_R1="${tmp_outdir}/R1.fq"
+tmp_R2="${tmp_outdir}/R2.fq"
+
+# unzip fastq.gz files to tmpdir
+printf "[ %s: Unzipping fastq.gz to tmpdir %s ]\n" "$(date)" "${tmp_outdir}"
+zcat "${fq_r1}" > "${tmp_R1}"
+zcat "${fq_r2}" > "${tmp_R2}"
+
 # parameters
 nThreads=10
 
 # build command
-cmd=( "${my_edena}" -nThreads "${nThreads}" -DRpairs "${input_fq[@]}"
+cmd=( "${my_edena}" -nThreads "${nThreads}" -DRpairs "${tmp_R1}" "${tmp_R2}"
       -p "${outdir}/${bn}" )
 shopt -s extglob
 printf "Final command line: "
@@ -37,6 +58,10 @@ log_file="${outdir}/edena_overlaps.log.txt"
 printf "[ %s: Waiting for edena to finish ]\n" "$(date)"
 FAIL=0
 fail_wait
+
+# clean up temporary files
+printf "[ %s: Removing temporary directory ]\n" "$(date)"
+rm -rf "${tmp_outdir}" || exit 1
 
 # log metadata
 metadata_file="${outdir}/METADATA.edena_overlaps.csv"
