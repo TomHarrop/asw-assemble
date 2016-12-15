@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+printf "[ %s: Truncate all reads to 100 b ]\n" \
+    "$(date)"
+
+# shellcheck disable=SC1091
+source "src/sh/bash_header"
+# shellcheck disable=SC1091
+source "src/sh/io_parser"
+
+# make outdir
+outdir="$(dirname "${output_fq}")"
+
+
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+target_length=100
+printf "target_length: %s\n" "${target_length}"
+
+# pair the files
+for fq_file in "${output_fq[@]}"; do
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "_R1" <<< "${bn}"; then
+        ofq_r1="${fq_file}"
+    elif grep -q "_R2" <<< "${bn}"; then
+        ofq_r2="${fq_file}"
+    fi
+done
+printf "\tofq_r1: %s\n\tofq_r2: %s\n" "${ofq_r1}" "${ofq_r2}"
+
+# build command
+bn="$(basename "${ofq_r1}" _R1.fastq.gz)"
+cmd=( bin/bbmap/reformat.sh zl=9
+      minlength="${target_length}" maxlength="${target_length}"
+      forcetrimright=$(( target_length - 1 ))
+      requirebothbad=f
+      lhist="${outdir}/${bn}_lhist.txt"
+      in="${input_fq}"
+      out="${ofq_r1}" out2="${ofq_r2}" )
+
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+# run bbnorm
+log_file="${outdir}/${bn}_reformat.log.txt"
+srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+    --output="${log_file}" "${cmd[@]}" &
+
+printf "[ %s: Waiting for bbnorm to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+# log metadata
+metadata_file="${outdir}/${bn}.METADATA.csv"
+
+printf "[ %s: Logging metadata ]\n" "$(date)"
+printf "metadata_file: %s\n" "${metadata_file}"
+cat <<- _EOF_ > "${metadata_file}"
+    Script,${0}
+    branch,$(git rev-parse --abbrev-ref HEAD)
+    hash,$(git rev-parse HEAD)
+    date,$(date +%F)
+    bbnorm revision,$(bin/bbmap/reformat.sh 2>&1 | sed '3q;d')
+    output,${outdir}
+_EOF_
+
+printf "[ %s: Done ]\n" "$(date)"
+
+exit 0

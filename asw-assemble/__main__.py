@@ -148,6 +148,15 @@ def main():
         filter=ruffus.formatter(r'.+/(?P<LN>[^(_|.)]+)(?P<VL>_?\w*).fastq.gz'),
         output=[r'output/bbnorm/{LN[0]}{VL[0]}.fastq.gz'])
 
+    # print raw and normalised kmer distribution plots
+    main_pipeline.merge(
+        name='kmer_distribution_plots',
+        task_func=tompltools.generate_job_function(
+            job_script='src/r/kmer_distribution_plots.R',
+            job_name='kmer_distribution_plots'),
+        input=bbnorm,
+        output=['output/bbnorm/plots.pdf', 'output/bbnorm/plot_data.Rds'])
+
     # run fastqc on decontaminated and normalised libraries
     main_pipeline.transform(
         name='fastqc',
@@ -159,6 +168,18 @@ def main():
         filter=ruffus.formatter(r'.+/(?P<LN>[^(_|.)]+)(?P<VL>_?\w*).fastq.gz'),
         output=[r'output/fastqc/{LN[0]}{VL[0]}_fastqc.html'])
 
+    # trim reads to 100 bp for edena?
+    clip_to_100b = main_pipeline.subdivide(
+        name='clip_to_100b',
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/clip_to_100b',
+            job_name='clip_to_100b'),
+        input=bbnorm,
+#        filter=ruffus.formatter(r'.+/(?P<LN>[^(_|.)]+)(?P<VL>_?\w*).fastq.gz'),
+        filter=ruffus.regex(r'.+/2125-01-11-1.fastq.gz'),
+        output=[r'output/trunc_100/2125-01-11-1_R1.fastq.gz'
+                r'output/trunc_100/2125-01-11-1_R2.fastq.gz'])
+
     # select files for hashing
     # velveth_input_files = [x.path for x in os.scandir('output/khmer')
     #                        if (x.name.endswith('fastq.gz')
@@ -166,7 +187,6 @@ def main():
     #                        and x.is_file()
     #                        and (('proper' in x.name and 'se' not in x.name)
     #                             or ('se_orphans' in x.name))]
-
     # # prepare files with velveth
     # # set threads for velvet to 1 !!!
     # min_kmer = 71
