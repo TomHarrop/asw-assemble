@@ -11,13 +11,6 @@ source "src/sh/io_parser"
 # set edena binary
 my_edena=bin/edena
 
-# make outdir
-outdir="$(dirname "${other_output}")"
-bn="$(basename "${other_output}" .ovc)"
-if [[ ! -d "${outdir}" ]]; then
-    mkdir -p "${outdir}"
-fi
-
 # pair the files
 for fq_file in "${input_fq[@]}"; do
     bn="$(basename "${fq_file}" .fastq.gz)"
@@ -34,10 +27,19 @@ tmp_outdir="$(mktemp --tmpdir -d "${script_name}_tmp.XXXXXXXX")"
 tmp_R1="${tmp_outdir}/R1.fq"
 tmp_R2="${tmp_outdir}/R2.fq"
 
+# make outdir
+outdir="$(dirname "${other_output}")"
+bn="$(basename "${other_output}" .ovc)"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
 # unzip fastq.gz files to tmpdir
 printf "[ %s: Unzipping fastq.gz to tmpdir %s ]\n" "$(date)" "${tmp_outdir}"
-zcat "${fq_r1}" > "${tmp_R1}"
-zcat "${fq_r2}" > "${tmp_R2}"
+zcat "${fq_r1}" > "${tmp_R1}" &
+zcat "${fq_r2}" > "${tmp_R2}" &
+FAIL=0
+fail_wait
 
 # parameters
 nThreads=10

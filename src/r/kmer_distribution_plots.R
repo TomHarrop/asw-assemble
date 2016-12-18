@@ -15,9 +15,9 @@ ExtractLibraryName <- function(x) {
 # for testing
 # command.args <- c(
 #     "--fq", "output/bbnorm/2125-01-06-1_mp.fastq.gz",
-#     "--fq", "output/bbnorm/2125-01-06-1_pe.fastq.gz", 
+#     "--fq", "output/bbnorm/2125-01-06-1_pe.fastq.gz",
 #     "--fq", "output/bbnorm/2125-01-06-1_se.fastq.gz",
-#     "--fq", "output/bbnorm/2125-01-06-1_unknown.fastq.gz", 
+#     "--fq", "output/bbnorm/2125-01-06-1_unknown.fastq.gz",
 #     "--fq", "output/bbnorm/2125-01-11-1.fastq.gz",
 #     "-r", "output/bbnorm/plots.pdf",
 #     "-z", "output/bbnorm/plot_data.Rds")
@@ -91,11 +91,25 @@ kmer_plot <- ggplot(hist.data, aes(x = `#Depth`, y = Unique_Kmers)) +
                        #                       math_format(4^.x))) +
     xlab("31-mer depth") + ylab("Number of unique 31-mers")
 
+kmer_plot <- ggplot(hist.data, aes(x = `#Depth`, y = Unique_Kmers, colour = type)) +
+    theme_minimal() +
+    theme(legend.position = c(5/6, 1/4)) +
+    facet_wrap(~ lib) +
+    geom_path(alpha = 0.75) +
+    scale_colour_brewer(palette = "Set1",
+                        guide = guide_legend(title = NULL)) +
+    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
+    scale_x_continuous(trans = log_trans(base = 4)) +
+    # labels = trans_format(function(x) log(x, 4),
+    #                       math_format(4^.x))) +
+    xlab("31-mer depth") + ylab("Number of unique 31-mers")
+
+
 # save output
 rutils::GenerateMessage("Saving output")
 ggsave(filename = parsed.args$output_pdf,
        plot = kmer_plot,
-       width = 210, height = 297, units = "mm")
+       width = 10, height = 7.5, units = "in")
 saveRDS(hist.data, parsed.args$other_output)
 
 # write logs

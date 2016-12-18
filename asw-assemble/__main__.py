@@ -180,6 +180,7 @@ def main():
         output=[r'output/trunc_100/2125-01-11-1_R1.fastq.gz',
                 r'output/trunc_100/2125-01-11-1_R2.fastq.gz'])
 
+    # overlap step with edena
     edena_overlaps = main_pipeline.collate(
         name='edena_overlaps',
         task_func=tompltools.generate_job_function(
