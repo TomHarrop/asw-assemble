@@ -74,40 +74,35 @@ lib.order = c("2125-01-11-1" = "Paired end reads",
               "se" = "Singletons",
               "unknown" = "Unknown")
 hist.data[, lib := factor(plyr::revalue(lib, lib.order),
-                   levels = lib.order)]
+                          levels = lib.order)]
 
 # colour for plots
 c.scale <- RColorBrewer::brewer.pal(9, "Set1")
 
 # raw vs norm plot
 rutils::GenerateMessage("Generating plot")
-kmer_plot <- ggplot(hist.data, aes(x = `#Depth`, y = Unique_Kmers)) +
-    theme_minimal() +
-    facet_grid(lib ~ type) +
-    geom_path(colour = c.scale[1]) +
-    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
-    scale_x_continuous(trans = log_trans(base = 4)) +
-                       # labels = trans_format(function(x) log(x, 4),
-                       #                       math_format(4^.x))) +
-    xlab("31-mer depth") + ylab("Number of unique 31-mers")
-
-kmer_plot <- ggplot(hist.data, aes(x = `#Depth`, y = Unique_Kmers, colour = type)) +
+kmer_plot <- ggplot(hist.data, aes(x = `#Depth`, y = Unique_Kmers,
+                          colour = type)) +
     theme_minimal() +
     theme(legend.position = c(5/6, 1/4)) +
     facet_wrap(~ lib) +
     geom_path(alpha = 0.75) +
     scale_colour_brewer(palette = "Set1",
                         guide = guide_legend(title = NULL)) +
-    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
-    scale_x_continuous(trans = log_trans(base = 4)) +
-    # labels = trans_format(function(x) log(x, 4),
-    #                       math_format(4^.x))) +
+    scale_y_continuous(
+        trans = "log10",
+        labels = trans_format("log10", math_format(10^.x)),
+        breaks = trans_breaks("log10", function(x) 10^x)) +
+    scale_x_continuous(trans = log_trans(base = 4),
+                       breaks = trans_breaks(function(x) log(x, 4),
+                                             function(x) 4^x)) +
     xlab("31-mer depth") + ylab("Number of unique 31-mers")
 
 
 # save output
 rutils::GenerateMessage("Saving output")
 ggsave(filename = parsed.args$output_pdf,
+       device = cairo_pdf,
        plot = kmer_plot,
        width = 10, height = 7.5, units = "in")
 saveRDS(hist.data, parsed.args$other_output)
