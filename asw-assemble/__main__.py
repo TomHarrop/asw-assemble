@@ -202,7 +202,7 @@ def main():
             [('output/velveth_' + str(x) + '/Sequences')
              for x in kmer_lengths]))
     velveth = main_pipeline.merge(
-        name='velveth',
+        name='hash_files',
         task_func=test_job_function,
         # task_func=tompltools.generate_job_function(
         #     job_script='src/sh/hash_files',
