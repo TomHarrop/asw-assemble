@@ -30,7 +30,8 @@ def main():
     # by src/sh/io_parser
     test_job_function = tompltools.generate_job_function(
         job_script='src/sh/io_parser',
-        job_name='test')
+        job_name='test',
+        verbose=True)
 
     # parse email etc. here?
     parser = ruffus.cmdline.get_argparse(
@@ -190,29 +191,24 @@ def main():
         filter=ruffus.formatter(r'.+/(?P<LN>[^_]+)_R\d.fastq.gz'),
         output=[r'output/edena/{LN[0]}.ovc'])
 
-    # select files for hashing
-    # velveth_input_files = [x.path for x in os.scandir('output/khmer')
-    #                        if (x.name.endswith('fastq.gz')
-    #                        or x.name.endswith('.fastq'))
-    #                        and x.is_file()
-    #                        and (('proper' in x.name and 'se' not in x.name)
-    #                             or ('se_orphans' in x.name))]
-    # # prepare files with velveth
-    # # set threads for velvet to 1 !!!
-    # min_kmer = 71
-    # max_kmer = 87
-    # step = 8
-    # kmer_lengths = [x for x in range(min_kmer, max_kmer + 1, step)]
-    # velveth_output = list(
-    #     tompytools.flatten_list(
-    #         [('output/velveth_' + str(x) + '/Sequences')
-    #          for x in kmer_lengths]))
-    # velveth = main_pipeline.merge(
-    #     name='velveth',
-    #     task_func=test_job_function,
-    #     input=velveth_input_files,
-    #     output=velveth_output)\
-    #     .follows(diginorm)
+    # prepare files with velveth
+    # set threads for velvet to 1 !!!
+    min_kmer = 71
+    max_kmer = 87
+    step = 8
+    kmer_lengths = [x for x in range(min_kmer, max_kmer + 1, step)]
+    velveth_output = list(
+        tompytools.flatten_list(
+            [('output/velveth_' + str(x) + '/Sequences')
+             for x in kmer_lengths]))
+    velveth = main_pipeline.merge(
+        name='velveth',
+        task_func=test_job_function,
+        # task_func=tompltools.generate_job_function(
+        #     job_script='src/sh/hash_files',
+        #     job_name='hash_files'),
+        input=bbnorm,
+        output=velveth_output)
 
     # # run velvetg on hash files
     # velvet_assembly = main_pipeline.subdivide(

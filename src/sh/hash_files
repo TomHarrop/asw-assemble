@@ -21,18 +21,18 @@ fi
 # set velveth binary
 my_velveth="bin/velvet/velveth"
 
-# separate the input fq by library typew
+# separate the input fq by library type
 for fq_file in "${input_fq[@]}"; do
     bn="$(basename "${fq_file}" .fastq.gz)"
     if grep -q "2125-01-11-1" <<< "${bn}"; then
         ifq="${fq_file}"
-    elif grep -q "_pe_" <<< "${bn}"; then
+    elif grep -q "_pe" <<< "${bn}"; then
         ifq_pe="${fq_file}"
-    elif grep -q "_se_" <<< "${bn}"; then
+    elif grep -q "_se" <<< "${bn}"; then
         ifq_se="${fq_file}"
-    elif grep -q "_mp_" <<< "${bn}"; then
+    elif grep -q "_mp" <<< "${bn}"; then
         ifq_mp="${fq_file}"
-    elif grep -q "_unknown_" <<< "${bn}"; then
+    elif grep -q "_unknown" <<< "${bn}"; then
         ifq_unk="${fq_file}"
     fi
 done
@@ -44,18 +44,18 @@ printf "\tifq_mp: %s\n" "${ifq_mp}"
 printf "\tifq_unk: %s\n" "${ifq_unk}"
 
 # parameters
- maxkmerlength="87"
- minkmerlength="71"
-          step="8"
+maxkmerlength="87"
+minkmerlength="71"
+         step="8"
 
 # build command
 cmd=( "${my_velveth}" "${outdir}"
       "${minkmerlength},$(( maxkmerlength + 1 )),${step}"
-      -short        -fastq           "${ifq_se}"
-      -shortPaired  -fastq "${ifq}"
-      -shortPaired2 -fastq "${ifq_pe}"
-      -shortPaired3 -fastq "${ifq_mp}"
-      -shortPaired4 -fastq "${ifq_unk}"
+      -short        -fastq "${ifq_se}"
+      -shortPaired2 -fastq "${ifq}"
+      -shortPaired3 -fastq "${ifq_pe}"
+      -shortPaired4 -fastq "${ifq_mp}"
+      -shortPaired5 -fastq "${ifq_unk}"
       -create_binary )
 shopt -s extglob
 printf "Final command line: "
