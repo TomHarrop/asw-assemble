@@ -43,6 +43,14 @@ printf "\tifq_se: %s\n" "${ifq_se}"
 printf "\tifq_mp: %s\n" "${ifq_mp}"
 printf "\tifq_unk: %s\n" "${ifq_unk}"
 
+# reverse compliment mate pairs
+script_name="$(basename "$0")"
+tmp_outdir="$(mktemp --tmpdir -d "${script_name}_tmp.XXXXXXXX")"
+tmp_mp="${tmp_outdir}/mp_rc.fq.gz"
+printf "[ %s: Reverse complementing mate pair reads ]\n" "$(date)"
+printf "\ttmp_mp: %s\n" "${tmp_mp}"
+bin/bbmap/reformat.sh in="${ifq_mp}" out="${tmp_mp}" rcomp
+
 # parameters
 maxkmerlength="87"
 minkmerlength="71"
@@ -54,7 +62,7 @@ cmd=( "${my_velveth}" "${outdir}"
       -short        -fastq "${ifq_se}"
       -shortPaired2 -fastq "${ifq}"
       -shortPaired3 -fastq "${ifq_pe}"
-      -shortPaired4 -fastq "${ifq_mp}"
+      -shortPaired4 -fastq "${tmp_mp}"
       -shortPaired5 -fastq "${ifq_unk}"
       -create_binary )
 shopt -s extglob
@@ -82,6 +90,7 @@ cat <<- _EOF_ > "${metadata_file}"
     hash,$(git rev-parse HEAD)
     date,$(date +%F)
     velveth,$("${my_velveth}" 2>&1 | sed '2q;d')
+    reformat revision,$(bin/bbmap/reformat.sh 2>&1 | sed '3q;d')
     output,${outdir}
 _EOF_
 
