@@ -27,7 +27,7 @@ fi
 # parameters
 zl=9
 samplereadstarget=1000
-minlength=125
+minlength=100
 requirebothbad=f
 minavgquality=30
 maxns=0
