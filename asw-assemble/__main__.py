@@ -176,10 +176,23 @@ def main():
             job_script='src/sh/clip_to_100b',
             job_name='clip_to_100b'),
         input=bbnorm,
-#        filter=ruffus.formatter(r'.+/(?P<LN>[^(_|.)]+)(?P<VL>_?\w*).fastq.gz'),
+        # next line is for ALL libraries
+        # filter=ruffus.formatter(r'.+/(?P<LN>[^(_|.)]+)(?P<VL>_?\w*).fastq.gz'),
+        # next line is for ONLY PE ThruPLEX library
         filter=ruffus.regex(r'.+/2125-01-11-1.fastq.gz'),
         output=[r'output/trunc_100/2125-01-11-1_R1.fastq.gz',
                 r'output/trunc_100/2125-01-11-1_R2.fastq.gz'])
+
+    # subsample reads for BLAST qc
+    fq_subsample = main_pipeline.subdivide(
+        name='fq_subsample',
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/fq_subsample',
+            job_name='fq_subsample'),
+        input=bbnorm,
+        filter=ruffus.formatter(r'.+/(?P<LN>[^(_|.)]+)(?P<VL>_?\w*).fastq.gz'),
+        output=[r'output/subsample/{LN[0]}{VL[0]}_R1.fastq.gz',
+                r'output/subsample/{LN[0]}{VL[0]}_R2.fastq.gz'])
 
     # overlap step with edena
     edena_overlaps = main_pipeline.collate(
