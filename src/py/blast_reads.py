@@ -35,7 +35,7 @@ def main():
         'blastn',
         'nt',
         fasta_string,
-        entrez_query='(all[filter] NOT predicted[title]) AND txid50557[ORGN]',
+        entrez_query='(all[filter] NOT predicted[title])',
         #entrez_query='txid50557[ORGN]',
         expect=10, hitlist_size=10)
 

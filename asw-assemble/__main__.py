@@ -190,8 +190,8 @@ def main():
             job_name='fq_subsample'),
         input=bbnorm,
         filter=ruffus.formatter(r'.+/(?P<LN>[^(_|.)]+)(?P<VL>_?\w*).fastq.gz'),
-        output=[r'output/subsample/{LN[0]}{VL[0]}_R1.fastq.gz',
-                r'output/subsample/{LN[0]}{VL[0]}_R2.fastq.gz'])
+        output=[r'output/blastqc/{LN[0]}{VL[0]}_R1.fastq.gz',
+                r'output/blastqc/{LN[0]}{VL[0]}_R2.fastq.gz'])
     blast_reads = main_pipeline.transform(
         name='blast_reads',
         task_func=tompltools.generate_job_function(
@@ -257,7 +257,7 @@ def main():
         pipeline_name="ASW genome assembly pipeline")
 
     # run the pipeline
-    ruffus.cmdline.run(options, multithread=8)
+    ruffus.cmdline.run(options, multithread=32)
 
 if __name__ == "__main__":
     main()
