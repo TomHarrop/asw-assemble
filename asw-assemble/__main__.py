@@ -182,6 +182,16 @@ def main():
         output=[r'output/trunc_100/2125-01-11-1_R1.fastq.gz',
                 r'output/trunc_100/2125-01-11-1_R2.fastq.gz'])
 
+    # download NCBI databases for taxonomy data
+    download_taxonomy_databases = main_pipeline.originate(
+        name='download_taxonomy_databases',
+        task_func=tompltools.generate_job_function(
+            job_script='src/r/download_taxonomy_databases.R',
+            job_name='download_taxonomy_databases'),
+        output=[['data/ncbi/nucl_gb.accession2taxid.Rds',
+                'data/ncbi/nodes.dmp.Rds',
+                'data/ncbi/names.dmp.Rds']])
+
     # subsample reads, blast with biopython and parse results
     fq_subsample = main_pipeline.subdivide(
         name='fq_subsample',

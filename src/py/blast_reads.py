@@ -19,7 +19,7 @@ def main():
     with gzip.open(input_fq, 'rt') as fastq_file:
         # read the fastq
         input_fq_iterator = SeqIO.parse(fastq_file, "fastq")
-        fasta_tempfile = tempfile.mkstemp()[1]
+        fasta_tempfile = tempfile.mkstemp(suffix=".fasta")[1]
 
         tompytools.generate_message('Writing fasta to temporary file %s'
                                     % fasta_tempfile)
@@ -35,7 +35,7 @@ def main():
         'blastn',
         'nt',
         fasta_string,
-        entrez_query='(all[filter] NOT predicted[title])',
+        entrez_query='all[filter] NOT predicted[title]',
         #entrez_query='txid50557[ORGN]',
         expect=10, hitlist_size=10)
 
