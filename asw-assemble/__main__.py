@@ -195,7 +195,7 @@ def main():
     blast_reads = main_pipeline.transform(
         name='blast_reads',
         task_func=tompltools.generate_job_function(
-            job_script='src/sh/blast_reads.py',
+            job_script='src/py/blast_reads.py',
             job_name='blast_reads'),
         input=fq_subsample,
         filter=ruffus.suffix('.fastq.gz'),
