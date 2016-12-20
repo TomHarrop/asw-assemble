@@ -101,7 +101,7 @@ while getopts ":b:c:d:e:f:g:h:i:j:k:l:m:p:r:t:u:v:w:y:z:-:" opt; do
             output_fa+=( "${OPTARG}" )
             printf "   output_fa: %s\n" "${OPTARG}"
             ;;
-        "h")
+        "n")
             output_dict+=( "${OPTARG}" )
             printf " output_dict: %s\n" "${OPTARG}"
             ;;

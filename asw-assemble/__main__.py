@@ -15,7 +15,6 @@ import tompytools
 import ruffus
 import os
 
-
 ############
 # Pipeline #
 ############
@@ -183,7 +182,7 @@ def main():
         output=[r'output/trunc_100/2125-01-11-1_R1.fastq.gz',
                 r'output/trunc_100/2125-01-11-1_R2.fastq.gz'])
 
-    # subsample reads for BLAST qc
+    # subsample reads, blast with biopython and parse results
     fq_subsample = main_pipeline.subdivide(
         name='fq_subsample',
         task_func=tompltools.generate_job_function(
@@ -193,6 +192,18 @@ def main():
         filter=ruffus.formatter(r'.+/(?P<LN>[^(_|.)]+)(?P<VL>_?\w*).fastq.gz'),
         output=[r'output/subsample/{LN[0]}{VL[0]}_R1.fastq.gz',
                 r'output/subsample/{LN[0]}{VL[0]}_R2.fastq.gz'])
+    blast_reads = main_pipeline.transform(
+        name='blast_reads',
+        task_func=test_job_function,
+        input=fq_subsample,
+        filter=ruffus.suffix('.fastq.gz'),
+        output=['.xml'])
+    main_pipeline.transform(
+        name='parse_blast_results',
+        task_func=test_job_function,
+        input=blast_reads,
+        filter=ruffus.suffix('.xml'),
+        output=['.table'])
 
     # overlap step with edena
     edena_overlaps = main_pipeline.collate(
