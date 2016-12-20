@@ -187,7 +187,8 @@ def main():
         name='download_taxonomy_databases',
         task_func=tompltools.generate_job_function(
             job_script='src/r/download_taxonomy_databases.R',
-            job_name='download_taxonomy_databases'),
+            job_name='download_taxonomy_databases',
+            job_type='originate'),
         output=[['data/ncbi/nucl_gb.accession2taxid.Rds',
                 'data/ncbi/nodes.dmp.Rds',
                 'data/ncbi/names.dmp.Rds']])
