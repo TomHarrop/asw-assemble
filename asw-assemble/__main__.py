@@ -194,13 +194,17 @@ def main():
                 r'output/subsample/{LN[0]}{VL[0]}_R2.fastq.gz'])
     blast_reads = main_pipeline.transform(
         name='blast_reads',
-        task_func=test_job_function,
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/blast_reads.py',
+            job_name='blast_reads'),
         input=fq_subsample,
         filter=ruffus.suffix('.fastq.gz'),
         output=['.xml'])
     main_pipeline.transform(
         name='parse_blast_results',
-        task_func=test_job_function,
+        task_func=tompltools.generate_job_function(
+            job_script='src/py/parse_blast_results.py',
+            job_name='parse_blast_results'),
         input=blast_reads,
         filter=ruffus.suffix('.xml'),
         output=['.table'])
