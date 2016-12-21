@@ -26,7 +26,7 @@ fi
 
 # parameters
 zl=9
-samplereadstarget=100
+samplereadstarget=1000
 minlength=100
 minavgquality=30
 maxns=0
