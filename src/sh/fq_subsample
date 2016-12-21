@@ -28,9 +28,16 @@ fi
 zl=9
 samplereadstarget=100
 minlength=100
-requirebothbad=f
 minavgquality=30
 maxns=0
+
+bn="$(basename "${ofq_r1}" _R1.fastq.gz )"
+if grep -q "_se" <<< "${bn}"; then
+  printf "[ %s: Single-end reads, setting requirebothbad=t ]\n" "$(date)"
+  requirebothbad=t
+else
+  requirebothbad=t
+fi
 
 # build command
 java_ram=$((ram_limit/1000000000))"g"

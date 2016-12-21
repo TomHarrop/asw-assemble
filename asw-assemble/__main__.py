@@ -35,6 +35,10 @@ def main():
     # parse email etc. here?
     parser = ruffus.cmdline.get_argparse(
         description='ASW genome assembly pipeline.')
+    parser.add_argument('--blast-db-folder',
+                        help='Path to BLAST db folder',
+                        type=str,
+                        dest='blast_db_folder')
     # parser.add_argument('--email', '-e',
     #                     help='Logon email address for JGI',
     #                     type=str,
@@ -46,6 +50,9 @@ def main():
     options = parser.parse_args()
     # jgi_logon = options.jgi_logon
     # jgi_password = options.jgi_password
+    # if blast_db_folder was passed on the cli, set it
+    if options.blast_db_folder:
+        os.environ['BLASTDB'] = options.blast_db_folder
 
     # initialise pipeline
     main_pipeline = ruffus.Pipeline.pipelines['main']
@@ -207,7 +214,8 @@ def main():
         name='blast_reads',
         task_func=tompltools.generate_job_function(
             job_script='src/py/blast_reads.py',
-            job_name='blast_reads'),
+            job_name='blast_reads',
+            cpus_per_task=4),
         input=fq_subsample,
         filter=ruffus.suffix('.fastq.gz'),
         output=['.xml'])
