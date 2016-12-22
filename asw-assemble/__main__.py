@@ -219,7 +219,7 @@ def main():
         input=fq_subsample,
         filter=ruffus.suffix('.fastq.gz'),
         output=['.xml'])
-    main_pipeline.transform(
+    parse_blast_results = main_pipeline.transform(
         name='parse_blast_results',
         task_func=tompltools.generate_job_function(
             job_script='src/py/parse_blast_results.py',
@@ -227,16 +227,23 @@ def main():
         input=blast_reads,
         filter=ruffus.suffix('.xml'),
         output=['.table'])
+    main_pipeline.merge(
+        name='plot_blast_resuts',
+        task_func=tompltools.generate_job_function(
+            job_script='src/r/extract_blast_hits_per_taxid.R',
+            job_name='plot_blast_resuts'),
+        input=[parse_blast_results, download_taxonomy_databases],
+        output=['output/blastqc/plots.pdf'])
 
     # overlap step with edena
-    edena_overlaps = main_pipeline.collate(
-        name='edena_overlaps',
-        task_func=tompltools.generate_job_function(
-            job_script='src/sh/edena_overlaps',
-            job_name='edena_overlaps'),
-        input=clip_to_100b,
-        filter=ruffus.formatter(r'.+/(?P<LN>[^_]+)_R\d.fastq.gz'),
-        output=[r'output/edena/{LN[0]}.ovc'])
+    # edena_overlaps = main_pipeline.collate(
+    #     name='edena_overlaps',
+    #     task_func=tompltools.generate_job_function(
+    #         job_script='src/sh/edena_overlaps',
+    #         job_name='edena_overlaps'),
+    #     input=clip_to_100b,
+    #     filter=ruffus.formatter(r'.+/(?P<LN>[^_]+)_R\d.fastq.gz'),
+    #     output=[r'output/edena/{LN[0]}.ovc'])
 
     # prepare files with velveth
     # set threads for velvet to 1 !!!
@@ -248,14 +255,14 @@ def main():
         tompytools.flatten_list(
             [('output/velveth_' + str(x) + '/Sequences')
              for x in kmer_lengths]))
-    velveth = main_pipeline.merge(
-        name='hash_files',
-        task_func=test_job_function,
-        # task_func=tompltools.generate_job_function(
-        #     job_script='src/sh/hash_files',
-        #     job_name='hash_files'),
-        input=bbnorm,
-        output=velveth_output)
+    # velveth = main_pipeline.merge(
+    #     name='hash_files',
+    #     task_func=test_job_function,
+    #     # task_func=tompltools.generate_job_function(
+    #     #     job_script='src/sh/hash_files',
+    #     #     job_name='hash_files'),
+    #     input=bbnorm,
+    #     output=velveth_output)
 
     # # run velvetg on hash files
     # velvet_assembly = main_pipeline.subdivide(
