@@ -54,7 +54,7 @@ def main():
         evalue=1,
         max_target_seqs=10,
         num_threads=max_cpus,
-        task='blastn')
+        task='megablast')
     print(blastn_cline)
     blastn_cline()
 
