@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+
+printf "[ %s: Assemble with SOAPdenovo2 ]\n" \
+    "$(date)"
+
+# shellcheck disable=SC1091
+source "src/sh/bash_header"
+# shellcheck disable=SC1091
+source "src/sh/io_parser"
+
+# set SOAP binary
+my_soap="bin/soap/SOAPdenovo-63mer"
+
+# make outdir
+outdir="$(dirname "${other_output}")"
+outdir="${outdir//_*/}"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+# separate the input fq by library type
+for fq_file in "${input_fq[@]}"; dorm 
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "2125-01-11-1" <<< "${bn}"; then
+        ifq="${fq_file}"
+    elif grep -q "_pe" <<< "${bn}"; then
+        ifq_pe="${fq_file}"
+    elif grep -q "_se" <<< "${bn}"; then
+        ifq_se="${fq_file}"
+    elif grep -q "_mp" <<< "${bn}"; then
+        ifq_mp="${fq_file}"
+    elif grep -q "_unknown" <<< "${bn}"; then
+        ifq_unk="${fq_file}"
+    fi
+done
+
+printf "\tifq: %s\n" "${ifq}"
+printf "\tifq_pe: %s\n" "${ifq_pe}"
+printf "\tifq_se: %s\n" "${ifq_se}"
+printf "\tifq_mp: %s\n" "${ifq_mp}"
+printf "\tifq_unk: %s\n" "${ifq_unk}"
+
+# deinterleave fq
+script_name="$(basename "$0")"
+tmp_outdir="$(mktemp --tmpdir -d "${script_name}_tmp.XXXXXXXX")"
+printf "[ %s: Deinterleaving reads to %s ]\n" "$(date)" "${tmp_outdir}"
+reformat="bin/bbmap/reformat.sh"
+tmp_ifq_r1="${tmp_outdir}/ifq_r1.fq.gz"
+tmp_ifq_r2="${tmp_outdir}/ifq_r2.fq.gz"
+tmp_ifq_pe_r1="${tmp_outdir}/ifq_pe_r1.fq.gz"
+tmp_ifq_pe_r2="${tmp_outdir}/ifq_pe_r2.fq.gz"
+tmp_ifq_mp_r1="${tmp_outdir}/ifq_mp_r1.fq.gz"
+tmp_ifq_mp_r2="${tmp_outdir}/ifq_mp_r2.fq.gz"
+tmp_ifq_unk_r1="${tmp_outdir}/ifq_unk_r1.fq.gz" # don't use unk for now
+tmp_ifq_unk_r2="${tmp_outdir}/ifq_unk_r2.fq.gz" # don't use unk for now
+
+"${reformat}" "in=${ifq}"    "out1=${tmp_ifq_r1}"    "out2=${tmp_ifq_r2}" &
+"${reformat}" "in=${ifq_pe}" "out1=${tmp_ifq_pe_r1}" "out2=${tmp_ifq_pe_r2}" &
+"${reformat}" "in=${ifq_mp}" "out1=${tmp_ifq_mp_r1}" "out2=${tmp_ifq_mp_r2}" &
+
+printf "[ %s: Waiting for reformat.sh to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+# configure SOAP
+sd2_config_file="output/soap/config.txt"
+
+cat <<- _EOF_ > "${sd2_config_file}"
+# thruplex
+[LIB]
+# average insert size
+avg_ins=465
+# if sequence needs to be reversed
+reverse_seq=0
+# in which part(s) the reads are used
+asm_flags=3
+# use only first 100 bps of each read
+#rd_len_cutoff=100
+# in which order the reads are used while scaffolding
+rank=2
+# cutoff of pair number for a reliable connection (at least 3 for short insert
+# size)
+#pair_num_cutoff=3
+# minimum aligned length to contigs for a reliable read location (at least 32
+# for short insert size)
+#map_len=32
+# a pair of fastq file, read 1 file should always be followed by read 2 file
+q1=${tmp_ifq_r1}
+q2=${tmp_ifq_r2}
+
+# nextera fragments
+[LIB]
+# average insert size
+avg_ins=625
+# if sequence needs to be reversed
+reverse_seq=0
+# in which part(s) the reads are used
+asm_flags=3
+# use only first 100 bps of each read
+#rd_len_cutoff=100
+# in which order the reads are used while scaffolding
+rank=3
+# cutoff of pair number for a reliable connection (at least 3 for short insert size)
+#pair_num_cutoff=3
+# minimum aligned length to contigs for a reliable read location (at least 32
+# for short insert size)
+#map_len=32
+# a pair of fastq file, read 1 file should always be followed by read 2 file
+q1=${tmp_ifq_pe_r1}
+q2=${tmp_ifq_pe_r2}
+
+# nextera mate pairs
+[LIB]
+# average insert size
+avg_ins=5500
+# if sequence needs to be reversed
+reverse_seq=1
+# in which part(s) the reads are used
+asm_flags=2
+# use only first 100 bps of each read
+#rd_len_cutoff=100
+# in which order the reads are used while scaffolding
+rank=4
+# cutoff of pair number for a reliable connection (at least 3 for short insert size)
+#pair_num_cutoff=3
+# minimum aligned length to contigs for a reliable read location (at least 32
+# for short insert size)
+#map_len=35
+# a pair of fastq file, read 1 file should always be followed by read 2 file
+q1=${tmp_ifq_mp_r1}
+q2=${tmp_ifq_mp_r2}
+
+# single end reads
+[LIB]
+# if sequence needs to be reversed
+reverse_seq=0
+# in which part(s) the reads are used
+asm_flags=1
+# in which order the reads are used while scaffolding
+rank=1
+# minimum aligned length to contigs for a reliable read location (at least 32
+# for short insert size)
+#map_len=32
+# another fastq file for single reads
+q=${ifq_se}
+_EOF_
+
+# build SOAP command
+cmd=( "${my_soap}" all -s "${sd2_config_file}" -o "${outdir}"
+          -K 31 -m 63 -p 25 -z 500000000000  )
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+# run SOAP
+log_file="${outdir}/soap.log.txt"
+err_file="${outdir}/soap.err.txt"
+
+"${cmd[@]}" > "${log_file}" 2> "${err_file}" &
+printf "[ %s: Waiting for SOAP to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+# tidy up
+rm -r "${tmp_outdir}" || exit 1
+
+# log metadata
+metadata_file="${outdir}/METADATA.csv"
+
+printf "[ %s: Logging metadata ]\n" "$(date)"
+printf "metadata_file: %s\n" "${metadata_file}"
+cat <<- _EOF_ > "${metadata_file}"
+    Script,${0}
+    branch,$(git rev-parse --abbrev-ref HEAD)
+    hash,$(git rev-parse HEAD)
+    date,$(date +%F)
+    SOAP,$("${my_soap}" 2>&1 | sed '2q;d')
+    reformat revision,$(bin/bbmap/reformat.sh 2>&1 | sed '3q;d')
+    output,${outdir}
+_EOF_
+
+printf "[ %s: Done ]\n" "$(date)"
+
+exit 0

@@ -245,6 +245,15 @@ def main():
     #     filter=ruffus.formatter(r'.+/(?P<LN>[^_]+)_R\d.fastq.gz'),
     #     output=[r'output/edena/{LN[0]}.ovc'])
 
+    # run soapdenovo
+    main_pipeline.merge(
+        name='soap_denovo2',
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/soap_denovo2',
+            job_name='soap_denovo2'),
+        input=bbnorm,
+        output='output/soap/assembly.contig')
+
     # prepare files with velveth
     # set threads for velvet to 1 !!!
     min_kmer = 71
