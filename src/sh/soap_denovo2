@@ -19,7 +19,7 @@ if [[ ! -d "${outdir}" ]]; then
 fi
 
 # separate the input fq by library type
-for fq_file in "${input_fq[@]}"; dorm 
+for fq_file in "${input_fq[@]}"; do
     bn="$(basename "${fq_file}" .fastq.gz)"
     if grep -q "2125-01-11-1" <<< "${bn}"; then
         ifq="${fq_file}"
@@ -56,7 +56,7 @@ tmp_ifq_unk_r2="${tmp_outdir}/ifq_unk_r2.fq.gz" # don't use unk for now
 
 "${reformat}" "in=${ifq}"    "out1=${tmp_ifq_r1}"    "out2=${tmp_ifq_r2}" &
 "${reformat}" "in=${ifq_pe}" "out1=${tmp_ifq_pe_r1}" "out2=${tmp_ifq_pe_r2}" &
-"${reformat}" "in=${ifq_mp}" "out1=${tmp_ifq_mp_r1}" "out2=${tmp_ifq_mp_r2}" &
+ "${reformat}" "in=${ifq_mp}" "out1=${tmp_ifq_mp_r1}" "out2=${tmp_ifq_mp_r2}" &
 
 printf "[ %s: Waiting for reformat.sh to finish ]\n" "$(date)"
 FAIL=0
