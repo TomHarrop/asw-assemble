@@ -146,7 +146,7 @@ q=${ifq_se}
 _EOF_
 
 # build SOAP command
-cmd=( "${my_soap}" all -s "${sd2_config_file}" -o "${outdir}"
+cmd=( "${my_soap}" all -s "${sd2_config_file}" -o "${outdir}/assembly"
           -K 31 -m 63 -p 25 -z 500000000000  )
 shopt -s extglob
 printf "Final command line: "
