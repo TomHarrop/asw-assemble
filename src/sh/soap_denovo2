@@ -68,86 +68,43 @@ sd2_config_file="output/soap/config.txt"
 cat <<- _EOF_ > "${sd2_config_file}"
 # thruplex
 [LIB]
-# average insert size
 avg_ins=465
-# if sequence needs to be reversed
 reverse_seq=0
-# in which part(s) the reads are used
-asm_flags=3
-# use only first 100 bps of each read
-#rd_len_cutoff=100
-# in which order the reads are used while scaffolding
-rank=2
-# cutoff of pair number for a reliable connection (at least 3 for short insert
-# size)
-#pair_num_cutoff=3
-# minimum aligned length to contigs for a reliable read location (at least 32
-# for short insert size)
-#map_len=32
-# a pair of fastq file, read 1 file should always be followed by read 2 file
+asm_flags=1
+rd_len_cutoff=125
 q1=${tmp_ifq_r1}
 q2=${tmp_ifq_r2}
 
 # nextera fragments
 [LIB]
-# average insert size
 avg_ins=625
-# if sequence needs to be reversed
 reverse_seq=0
-# in which part(s) the reads are used
-asm_flags=3
-# use only first 100 bps of each read
-#rd_len_cutoff=100
-# in which order the reads are used while scaffolding
-rank=3
-# cutoff of pair number for a reliable connection (at least 3 for short insert size)
-#pair_num_cutoff=3
-# minimum aligned length to contigs for a reliable read location (at least 32
-# for short insert size)
-#map_len=32
-# a pair of fastq file, read 1 file should always be followed by read 2 file
+asm_flags=1
+rd_len_cutoff=125
 q1=${tmp_ifq_pe_r1}
 q2=${tmp_ifq_pe_r2}
 
 # nextera mate pairs
 [LIB]
-# average insert size
 avg_ins=5500
-# if sequence needs to be reversed
 reverse_seq=1
-# in which part(s) the reads are used
 asm_flags=2
-# use only first 100 bps of each read
-#rd_len_cutoff=100
-# in which order the reads are used while scaffolding
-rank=4
-# cutoff of pair number for a reliable connection (at least 3 for short insert size)
-#pair_num_cutoff=3
-# minimum aligned length to contigs for a reliable read location (at least 32
-# for short insert size)
-#map_len=35
-# a pair of fastq file, read 1 file should always be followed by read 2 file
+rd_len_cutoff=125
+rank=1
+pair_num_cutoff=5
 q1=${tmp_ifq_mp_r1}
 q2=${tmp_ifq_mp_r2}
 
 # single end reads
 [LIB]
-# if sequence needs to be reversed
 reverse_seq=0
-# in which part(s) the reads are used
 asm_flags=1
-# in which order the reads are used while scaffolding
-rank=1
-# minimum aligned length to contigs for a reliable read location (at least 32
-# for short insert size)
-#map_len=32
-# another fastq file for single reads
 q=${ifq_se}
 _EOF_
 
 # build SOAP command
 cmd=( "${my_soap}" all -s "${sd2_config_file}" -o "${outdir}/assembly"
-          -K 31 -m 63 -p 25 -z 500000000000  )
+          -K 31 -m 63 -p 50 )
 shopt -s extglob
 printf "Final command line: "
 printf "%s " "${cmd[@]//+([[:blank:]])/ }"
