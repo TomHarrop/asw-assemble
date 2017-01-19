@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+
+printf "[ %s: Assemble with SOAPdenovo2 ]\n" \
+    "$(date)"
+
+# shellcheck disable=SC1091
+source "src/sh/bash_header"
+# shellcheck disable=SC1091
+source "src/sh/io_parser"
+
+# set kmergenie script
+my_kmergenie="bin/kmergenie/kmergenie"
+
+# make outdir
+outdir="$(dirname "${other_output}")"
+outdir="${outdir//_*/}"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+# separate the input fq by library type
+for fq_file in "${input_fq[@]}"; do
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "2125-01-11-1" <<< "${bn}"; then
+        ifq="${fq_file}"
+    elif grep -q "_pe" <<< "${bn}"; then
+        ifq_pe="${fq_file}"
+    elif grep -q "_se" <<< "${bn}"; then
+        ifq_se="${fq_file}"
+    elif grep -q "_mp" <<< "${bn}"; then
+        ifq_mp="${fq_file}"
+    elif grep -q "_unknown" <<< "${bn}"; then
+        ifq_unk="${fq_file}"
+    fi
+done
+
+printf "\tifq: %s\n" "${ifq}"
+printf "\tifq_pe: %s\n" "${ifq_pe}"
+printf "\tifq_se: %s\n" "${ifq_se}"
+printf "\tifq_mp: %s\n" "${ifq_mp}"
+printf "\tifq_unk: %s\n" "${ifq_unk}"
+
+# setup input file for kmergenie
+script_name="$(basename "$0")"
+tmp_outdir="$(mktemp --tmpdir -d "${script_name}_tmp.XXXXXXXX")"
+read_file="${tmp_outdir}/read_file.txt"
+cat <<- _EOF_ > "${read_file}"
+${ifq}
+${ifq_pe}
+${ifq_se}
+${ifq_mp}
+_EOF_
+
+# build command
+cmd=( "${my_kmergenie}" "${read_file}" --diploid 
+          -t "${max_cpus}" -o "${outdir}/histograms" )
+
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+# run kmergenie
+log_file="${outdir}/kmergenie.log.txt"
+srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
+    --output="${log_file}" "${cmd[@]}" &
+
+printf "[ %s: Waiting for kmergenie to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+# log metadata
+metadata_file="${outdir}/METADATA.csv"
+
+printf "[ %s: Logging metadata ]\n" "$(date)"
+printf "metadata_file: %s\n" "${metadata_file}"
+cat <<- _EOF_ > "${metadata_file}"
+    Script,${0}
+    branch,$(git rev-parse --abbrev-ref HEAD)
+    hash,$(git rev-parse HEAD)
+    date,$(date +%F)
+    kmergenie version,$(my_kmergenie 2>&1 | sed '1q;d')
+    output,${outdir}
+_EOF_
+
+printf "[ %s: Done ]\n" "$(date)"
+
+exit 0

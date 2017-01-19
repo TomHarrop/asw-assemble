@@ -175,6 +175,16 @@ def main():
         filter=ruffus.formatter(r'.+/(?P<LN>[^(_|.)]+)(?P<VL>_?\w*).fastq.gz'),
         output=[r'output/fastqc/{LN[0]}{VL[0]}_fastqc.html'])
 
+    # run kmergenie on normalised data
+    main_pipeline.merge(
+        name='kmergenie',
+        task_func=tompltools.generate_job_function(
+            job_script='src/sh/kmergenie',
+            job_name='kmergenie',
+            cpus_per_task=8),
+        input=bbnorm,
+        output='output/kmergenie/histograms_report.html')
+
     # trim reads to 100 bp for edena?
     clip_to_100b = main_pipeline.subdivide(
         name='clip_to_100b',
