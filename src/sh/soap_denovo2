@@ -45,10 +45,10 @@ fq_mp_r2="${tmp_outdir}/mpr2.fq.gz"
 fq_pe_r1="${tmp_outdir}/per1.fq.gz"
 fq_pe_r2="${tmp_outdir}/per2.fq.gz"
 
-# bin/bbtools/reformat.sh \
-#     "in=${fq_mp}" "out1=${fq_mp_r1}" "out2=${fq_mp_r2}" &
-# bin/bbtools/reformat.sh \
-#     "in=${fq_pe}" "out1=${fq_pe_r1}" "out2=${fq_pe_r2}" &
+bin/bbtools/reformat.sh \
+    "in=${fq_mp}" "out1=${fq_mp_r1}" "out2=${fq_mp_r2}" &
+bin/bbtools/reformat.sh \
+    "in=${fq_pe}" "out1=${fq_pe_r1}" "out2=${fq_pe_r2}" &
 
 printf "[ %s: Waiting for reformat.sh to finish ]\n" "$(date)"
 FAIL=0
@@ -101,10 +101,8 @@ for soap_kmer_length in "${kmer_lengths[@]}"; do
     # run SOAP
     log_file="${outdir}/soap_${soap_kmer_length}.log"
     
-    # "${cmd[@]}" 2> "${log_file}" &
+    "${cmd[@]}" 2> "${log_file}" &
 done
-
-exit 1
 
 printf "[ %s: Waiting for SOAP to finish ]\n" "$(date)"
 FAIL=0

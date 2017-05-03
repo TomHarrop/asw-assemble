@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+
+printf "[ %s: Run assembly with meraculous ]\n" \
+    "$(date)"
+
+# shellcheck disable=SC1091
+source "src/sh/bash_header"
+# shellcheck disable=SC1091
+source "src/sh/io_parser"
+
+# meraculous script
+meraculous="bin/meraculous/run_meraculous.sh"
+
+# make outdir
+outdir="${output_fa[0]%%/run_*}"
+printf "outdir:\t%s\n" "${outdir}"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+# separate PE and MP files
+for fq_file in "${input_fq[@]}"; do
+    bn="$(basename "${fq_file}" .fastq.gz)"
+    if grep -q "2125-01-06-1_mp" <<< "${bn}"; then
+        fq_mp="${fq_file}"
+    elif grep -q "2125-01-11-1" <<< "${bn}"; then
+        fq_pe="${fq_file}"
+    fi
+done
+printf "fq_pe:\t%s\nfq_mp:\t%s\n" "${fq_pe}" "${fq_mp}"
+
+# parse kmer lengths
+prefs=( ${output_fa[@]%%mer\/*} )
+kmer_lengths=( ${prefs[@]##*\/run_} )
+printf "using kmer:\t%s\n" "${kmer_lengths[@]}"
+
+# loop over kmer lengths
+for meraculous_kmer_length in "${kmer_lengths[@]}"; do
+    meraculous_outdir="${outdir}/run_${meraculous_kmer_length}mer"
+    meraculous_conf="${outdir}/meraculous_${meraculous_kmer_length}.conf"
+
+    # configure meraculous
+    cat <<- _EOF_ > "${meraculous_conf}"
+    lib_seq             $(readlink -f "${fq_pe}") PE 470 47 125 0 0 1 1 1 0 0 
+    lib_seq             $(readlink -f "${fq_mp}") MP 5500 500 96 0 1 0 1 0 0 0 
+    genome_size         0.66
+    mer_size            ${meraculous_kmer_length}
+    diploid_mode        1
+    num_prefix_blocks   1
+    min_depth_cutoff    0
+    local_num_procs     10
+    local_max_memory    10
+    use_cluster         0
+    no_read_validation  0
+_EOF_
+
+    # build command
+    cmd=( "${meraculous}" -c "${meraculous_conf}"
+              -dir "${meraculous_outdir}"
+              -cleanup_level 2 )
+    shopt -s extglob
+    printf "Final command line: "
+    printf "%s " "${cmd[@]//+([[:blank:]])/ }"
+    printf "\n"
+    shopt -u extglob
+
+    # run meraculous
+    log_file="${outdir}/meraculous_${meraculous_kmer_length}.log"
+
+    "${cmd[@]}" 2> "${log_file}" &
+done
+
+printf "[ %s: Waiting for meraculous jobs to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+# log metadata
+metadata_file="${outdir}/METADATA.csv"
+
+printf "[ %s: Logging metadata ]\n" "$(date)"
+printf "metadata_file: %s\n" "${metadata_file}"
+cat <<- _EOF_ > "${metadata_file}"
+    Script,${0}
+    branch,$(git rev-parse --abbrev-ref HEAD)
+    hash,$(git rev-parse HEAD)
+    date,$(date +%F)
+    meraculous,$("${meraculous}" -v 2>&1 | sed '2q;d')
+_EOF_
+
+printf "[ %s: Done ]\n" "$(date)"
+
+exit 0
+
