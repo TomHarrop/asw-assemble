@@ -37,7 +37,7 @@ done
 printf "\tifq: %s\n" "${ifq}"
 printf "\tifq_pe: %s\n" "${ifq_pe}"
 printf "\tifq_se: %s\n" "${ifq_se}"
-printf "\tifq_mp: %s\n" "${ifq_mp}"
+printf "\tifq_mp: %s\n" `"${ifq_mp}"
 printf "\tifq_unk: %s\n" "${ifq_unk}"
 
 # setup input file for kmergenie
@@ -64,7 +64,8 @@ shopt -u extglob
 # run kmergenie
 log_file="${outdir}/kmergenie.log.txt"
 srun --ntasks=1 --cpus-per-task="${max_cpus}" --exclusive \
-    --output="${log_file}" "${cmd[@]}" &
+    --output="${log_file}" 
+     &
 
 printf "[ %s: Waiting for kmergenie to finish ]\n" "$(date)"
 FAIL=0

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-printf "[ %s: Assemble with SOAPdenovo2 ]\n" \
+printf "[ %s: Run assembly with SOAP-denovo ]\n" \
     "$(date)"
 
 # shellcheck disable=SC1091
@@ -8,83 +8,65 @@ source "src/sh/bash_header"
 # shellcheck disable=SC1091
 source "src/sh/io_parser"
 
-# set SOAP binary
-my_soap="bin/soap/SOAPdenovo-63mer"
+# soap location
+soapdenovo=bin/soapdenovo2/SOAPdenovo-63mer
 
 # make outdir
-outdir="$(dirname "${other_output}")"
-outdir="${outdir//_*/}"
+outdir="${output_fa[0]%%/run_*}"
+printf "outdir:\t%s\n" "${outdir}"
 if [[ ! -d "${outdir}" ]]; then
     mkdir -p "${outdir}"
 fi
 
-# separate the input fq by library type
+# separate PE and MP files
 for fq_file in "${input_fq[@]}"; do
     bn="$(basename "${fq_file}" .fastq.gz)"
-    if grep -q "2125-01-11-1" <<< "${bn}"; then
-        ifq="${fq_file}"
-    elif grep -q "_pe" <<< "${bn}"; then
-        ifq_pe="${fq_file}"
-    elif grep -q "_se" <<< "${bn}"; then
-        ifq_se="${fq_file}"
-    elif grep -q "_mp" <<< "${bn}"; then
-        ifq_mp="${fq_file}"
-    elif grep -q "_unknown" <<< "${bn}"; then
-        ifq_unk="${fq_file}"
+    if grep -q "2125-01-06-1_mp" <<< "${bn}"; then
+        fq_mp="${fq_file}"
+    elif grep -q "2125-01-11-1" <<< "${bn}"; then
+        fq_pe="${fq_file}"
     fi
 done
+printf "fq_pe:\t%s\nfq_mp:\t%s\n" "${fq_pe}" "${fq_mp}"
 
-printf "\tifq: %s\n" "${ifq}"
-printf "\tifq_pe: %s\n" "${ifq_pe}"
-printf "\tifq_se: %s\n" "${ifq_se}"
-printf "\tifq_mp: %s\n" "${ifq_mp}"
-printf "\tifq_unk: %s\n" "${ifq_unk}"
+# parse kmer lengths
+prefs=( ${output_fa[@]%%mer\/*} )
+kmer_lengths=( ${prefs[@]##*\/run_} )
+printf "using kmer:\t%s\n" "${kmer_lengths[@]}"
 
 # deinterleave fq
 script_name="$(basename "$0")"
 tmp_outdir="$(mktemp --tmpdir -d "${script_name}_tmp.XXXXXXXX")"
 printf "[ %s: Deinterleaving reads to %s ]\n" "$(date)" "${tmp_outdir}"
-reformat="bin/bbmap/reformat.sh"
-tmp_ifq_r1="${tmp_outdir}/ifq_r1.fq.gz"
-tmp_ifq_r2="${tmp_outdir}/ifq_r2.fq.gz"
-tmp_ifq_pe_r1="${tmp_outdir}/ifq_pe_r1.fq.gz"
-tmp_ifq_pe_r2="${tmp_outdir}/ifq_pe_r2.fq.gz"
-tmp_ifq_mp_r1="${tmp_outdir}/ifq_mp_r1.fq.gz"
-tmp_ifq_mp_r2="${tmp_outdir}/ifq_mp_r2.fq.gz"
-tmp_ifq_unk_r1="${tmp_outdir}/ifq_unk_r1.fq.gz" # don't use unk for now
-tmp_ifq_unk_r2="${tmp_outdir}/ifq_unk_r2.fq.gz" # don't use unk for now
 
-"${reformat}" "in=${ifq}"    "out1=${tmp_ifq_r1}"    "out2=${tmp_ifq_r2}" &
-"${reformat}" "in=${ifq_pe}" "out1=${tmp_ifq_pe_r1}" "out2=${tmp_ifq_pe_r2}" &
-"${reformat}" "in=${ifq_mp}" "out1=${tmp_ifq_mp_r1}" "out2=${tmp_ifq_mp_r2}" &
+fq_mp_r1="${tmp_outdir}/mpr1.fq.gz"
+fq_mp_r2="${tmp_outdir}/mpr2.fq.gz"
+
+fq_pe_r1="${tmp_outdir}/per1.fq.gz"
+fq_pe_r2="${tmp_outdir}/per2.fq.gz"
+
+# bin/bbtools/reformat.sh \
+#     "in=${fq_mp}" "out1=${fq_mp_r1}" "out2=${fq_mp_r2}" &
+# bin/bbtools/reformat.sh \
+#     "in=${fq_pe}" "out1=${fq_pe_r1}" "out2=${fq_pe_r2}" &
 
 printf "[ %s: Waiting for reformat.sh to finish ]\n" "$(date)"
 FAIL=0
 fail_wait
 
 # configure SOAP
-sd2_config_file="output/soap/config.txt"
-
+sd2_config_file="${outdir}/soap_config"
 cat <<- _EOF_ > "${sd2_config_file}"
-# thruplex
+# Thruplex
 [LIB]
-avg_ins=465
+avg_ins=470
 reverse_seq=0
 asm_flags=1
 rd_len_cutoff=125
-q1=${tmp_ifq_r1}
-q2=${tmp_ifq_r2}
+q1=${fq_pe_r1}
+q2=${fq_pe_r2}
 
-# nextera fragments
-[LIB]
-avg_ins=625
-reverse_seq=0
-asm_flags=1
-rd_len_cutoff=125
-q1=${tmp_ifq_pe_r1}
-q2=${tmp_ifq_pe_r2}
-
-# nextera mate pairs
+# Nextera mate pairs
 [LIB]
 avg_ins=5500
 reverse_seq=1
@@ -92,36 +74,41 @@ asm_flags=2
 rd_len_cutoff=125
 rank=1
 pair_num_cutoff=5
-q1=${tmp_ifq_mp_r1}
-q2=${tmp_ifq_mp_r2}
-
-# single end reads
-[LIB]
-reverse_seq=0
-asm_flags=1
-q=${ifq_se}
+q1=${fq_mp_r1}
+q2=${fq_mp_r2}
 _EOF_
 
-# build SOAP command
-cmd=( "${my_soap}" all -s "${sd2_config_file}" -o "${outdir}/assembly"
-          -K 31 -m 63 -p 50 )
-shopt -s extglob
-printf "Final command line: "
-printf "%s " "${cmd[@]//+([[:blank:]])/ }"
-printf "\n"
-shopt -u extglob
+# build SOAP commands
+for soap_kmer_length in "${kmer_lengths[@]}"; do
+    # set up directories
+    soap_outdir="${outdir}/run_${soap_kmer_length}mer"
+    if [[ ! -d "${soap_outdir}" ]]; then
+        mkdir -p "${soap_outdir}"
+    fi
 
-# run SOAP
-log_file="${outdir}/soap.log.txt"
-err_file="${outdir}/soap.err.txt"
+    # build command
+    cmd=( "${soapdenovo}" all 
+              -s "${sd2_config_file}"
+              -o "${soap_outdir}/assembly" 
+              -K "${soap_kmer_length}"
+              -m 63 -p 10 ) 
 
-"${cmd[@]}" > "${log_file}" 2> "${err_file}" &
+    printf "SOAP command line: "
+    printf "%s " "${cmd[@]//+([[:blank:]])/ }"
+    printf "\n"
+    shopt -u extglob
+
+    # run SOAP
+    log_file="${outdir}/soap_${soap_kmer_length}.log"
+    
+    # "${cmd[@]}" 2> "${log_file}" &
+done
+
+exit 1
+
 printf "[ %s: Waiting for SOAP to finish ]\n" "$(date)"
 FAIL=0
 fail_wait
-
-# tidy up
-rm -r "${tmp_outdir}" || exit 1
 
 # log metadata
 metadata_file="${outdir}/METADATA.csv"
@@ -133,10 +120,12 @@ cat <<- _EOF_ > "${metadata_file}"
     branch,$(git rev-parse --abbrev-ref HEAD)
     hash,$(git rev-parse HEAD)
     date,$(date +%F)
-    SOAP,$("${my_soap}" 2>&1 | sed '2q;d')
-    reformat revision,$(bin/bbmap/reformat.sh 2>&1 | sed '3q;d')
-    output,${outdir}
+    SOAP,$("${soapdenovo}" 2>&1 | sed '2q;d')
+    reformat revision,$(bin/bbtools/reformat.sh 2>&1 | sed '3q;d')
 _EOF_
+
+printf "[ %s: Removing temporary files ]\n" "$(date)"
+rm -r "${tmp_outdir}"
 
 printf "[ %s: Done ]\n" "$(date)"
 
