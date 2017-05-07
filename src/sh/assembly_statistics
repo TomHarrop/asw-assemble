@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+
+printf "[ %s: Trim and decontaminate with bbduk2 ]\n" \
+    "$(date)"
+
+# shellcheck disable=SC1091
+source "src/sh/bash_header"
+# shellcheck disable=SC1091
+source "src/sh/io_parser"
+
+# will pass input_fa and other_output from ruffus
+soap_files=()
+while IFS=  read -r -d $'\0'; do
+    soap_files+=("$REPLY")
+done < <(find . -name "assembly.scafSeq" -print0)
+meraculous_files=()
+while IFS=  read -r -d $'\0'; do
+    meraculous_files+=("$REPLY")
+done < <(find . -path "*meraculous_final_results*" -name "final.scaffolds.fa" -print0)
+input_fa=( "${soap_files[@]}" "${meraculous_files[@]}" )
+other_output="output/assembly_statistics/statistics.txt"
+
+# make outdir
+outdir="$(dirname "${other_output}")"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+# build command
+java_ram=$((ram_limit/1000000000))"g"
+infiles=$(printf "in=%s " "${input_fa[@]}" )
+cmd=( bin/bbtools/statswrapper.sh threads="${max_cpus}" "-Xmx${java_ram}"
+          minscaf=1000
+          format=3
+          "${infiles}" )
+
+shopt -s extglob
+printf "Final command line: "
+printf "%s " "${cmd[@]//+([[:blank:]])/ }"
+printf "\n"
+shopt -u extglob
+
+# run statswrapper
+log_file="${outdir}/stats.err"
+"${cmd[@]}" 2> "${log_file}" > "${other_output}" &
+
+printf "[ %s: Waiting for stats.sh to finish ]\n" "$(date)"
+FAIL=0
+fail_wait
+
+# log metadata
+metadata_file="${outdir}/METADATA.csv"
+printf "[ %s: Logging metadata ]\n" "$(date)"
+printf "metadata_file: %s\n" "${metadata_file}"
+cat <<- _EOF_ > "${metadata_file}"
+    Script,${0}
+    branch,$(git rev-parse --abbrev-ref HEAD)
+    hash,$(git rev-parse HEAD)
+    date,$(date +%F)
+    stats.sh revision,$(bin/bbtools/stats.sh 2>&1 | sed '3q;d')
+_EOF_
+
+printf "[ %s: Done ]\n" "$(date)"
+
+exit 0
