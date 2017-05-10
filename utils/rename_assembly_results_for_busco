@@ -54,7 +54,7 @@ rename_file () {
     _outfile="${_outdir}/${_datasource}_${_algo}_${_kmer}.fa"
 
     printf "cp %s %s\n" "${_filename}" "${_outfile}"
-    echo cp "${_filename}" "${_outfile}"
+    cp "${_filename}" "${_outfile}"
 }
 
 # make output directory
