@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+set -eu
+
+# find assembly results
+soap_files=()
+while IFS=  read -r -d $'\0'; do
+    soap_files+=("$REPLY")
+done < <(find . -name "assembly.scafSeq" -print0)
+meraculous_files=()
+while IFS=  read -r -d $'\0'; do
+    meraculous_files+=("$REPLY")
+done < <(find . -path "*meraculous_final_results*" -name "final.scaffolds.fa" -print0)
+input_fa=( "${soap_files[@]}" "${meraculous_files[@]}" )
+
+# function for parsing kmer
+parse_kmer () {
+    local _filepath="${1}"
+    local _prefix="${_filepath%%mer\/*}"
+    local _kmer="${_prefix##*\/run_}"
+    printf "%s" "${_kmer}"
+}
+
+# function for parsing algorithm
+parse_algorithm () {
+    if grep -q "soap" <<< "${1}" ; then
+        printf "SOAPdenovo2"
+    elif grep -q "meraculous_diploid2" <<< "${1}" ; then
+        printf "meraculous.unphased"
+    elif grep -q "meraculous" <<< "${1}" ; then
+        printf "meraculous"
+    fi
+}
+
+# function for parsing data source
+parse_datasource () {
+    if grep -q "bin_reads_by_coverage" <<< "${1}" ; then
+        printf "nopcr.binned"
+    elif grep -q "bbduk" <<< "${1}" ; then
+        printf "nopcr"
+    elif grep -q "decon" <<< "${1}" ; then
+        printf "thruplex"
+    fi
+}
+
+# function for renaming files
+rename_file () {
+    local _filename="${1}"
+    local _outdir="${2}"
+    local _datasource
+    local _algo
+    local _kmer
+    local _outfile
+
+    _datasource="$(parse_datasource "${_filename}")"
+    _algo="$(parse_algorithm "${_filename}")"
+    _kmer="$(parse_kmer "${_filename}")"
+    _outfile="${_outdir}/${_datasource}_${_algo}_${_kmer}.fa"
+
+    printf "cp %s %s\n" "${_filename}" "${_outfile}"
+    echo cp "${_filename}" "${_outfile}"
+}
+
+# make output directory
+outdir="test/assemblies"
+if [[ ! -d "${outdir}" ]]; then
+    mkdir -p "${outdir}"
+fi
+
+# copy files
+for fa in "${input_fa[@]}"; do
+    rename_file "${fa}" "${outdir}"
+done
